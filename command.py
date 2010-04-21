@@ -25,7 +25,7 @@ def scan(dirpath, ignore_files):
             st = process.stdout.read()
             lines = [ l for l in st.splitlines() if not l.startswith('?') ]
             if lines:
-                print dirpath
+                print dirpath, '- Mercurial'
                 for line in lines:
                     print line
                 print
@@ -57,7 +57,7 @@ def scan(dirpath, ignore_files):
                 if status.strip():
                     keepers.append(status + filename)
             if keepers:
-                print dirpath
+                print dirpath, '- Subversion'
                 for line in keepers:
                     print line
                 print
