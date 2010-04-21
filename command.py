@@ -2,7 +2,14 @@
 
 import os
 import sys
+from optparse import OptionParser
 from subprocess import Popen, PIPE
+
+USAGE = '''usage: %prog [options] path [path...]
+
+  Checks the status of all Subversion and Mercurial repositories beneath the
+  paths given on the command line.  Any repositories with uncommitted changes
+  are printed to standard out, along with the status of the files inside.'''
 
 def scan(dirpath, ignore_files):
     subdirs = []
@@ -69,6 +76,25 @@ def scan(dirpath, ignore_files):
     for subdir in subdirs:
         scan(subdir, ignore_files)
 
+def find_repositories_with_locate(path):
+    pass
+
+def find_repositories_by_walking(path):
+    pass
+
 def main():
+    parser = OptionParser(usage=USAGE)
+    parser.add_option('-l', '--locate', dest='use_locate', action='store_true',
+                      help='use locate(1) to find repositories')
+    parser.add_option('-w', '--walk', dest='use_walk', action='store_true',
+                      help='manually walk file tree to find repositories')
+    (options, args) = parser.parse_args()
+
+    if not args:
+        parser.print_help()
+        exit(2)
+
     for path in sys.argv[1:]:
-        scan(path, set())
+        print path
+        #find_repositories(path)
+        #scan(path, set())
