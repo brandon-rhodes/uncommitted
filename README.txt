@@ -74,6 +74,16 @@ out how to run each version control system myself; a quick search of
 PyPI suggests that I take a closer look at the `pyvcs`_ project.  Maybe
 that can be a useful direction for the next phase of development!
 
+Changelog
+---------
+
+**1.1** (2010 April 24)
+
+- *Bugfix:* changed *locate(1)* command line to use shell wildcards, since
+  it does not support regular expressions under MacOS X.
+
+- *Bugfix:* all repositories were being called "Subversion" repositories.
+
 .. _Mercurial: http://mercurial.selenic.com/
 .. _Subversion: http://subversion.tigris.org/
 .. _Git: http://git-scm.com/

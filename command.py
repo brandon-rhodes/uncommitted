@@ -15,11 +15,23 @@ USAGE = '''usage: %prog [options] path [path...]
 class ErrorCannotLocate(Exception):
     """Signal that we cannot successfully run the locate(1) binary."""
 
+globchar = re.compile(r'([][*?])')
+
+def escape(s):
+    """Escape the characters special to locate(1) globbing."""
+    return globchar.sub(r'\\\1', s)
+
 def find_repositories_with_locate(path):
     """Use locate to return a sequence of (path, vcsname) pairs."""
-    dotdirs = [ re.escape(dotdir) for dotdir in DOTDIRS ]
-    regex = r'%s/(.+/)?(%s)$' % (re.escape(path), '|'.join(dotdirs))
-    process = Popen(('locate', '-0', '--regex', regex), stdout=PIPE)
+    patterns = []
+    for dotdir in DOTDIRS:
+        # Escaping the slash (using '\/' rather than '/') is an
+        # important signal to locate(1) that these glob patterns are
+        # supposed to match the full path, so that things like
+        # '.hgignore' files do not show up in the result.
+        patterns.append(r'%s\/%s' % (escape(path), escape(dotdir)))
+        patterns.append(r'%s\/*/%s' % (escape(path), escape(dotdir)))
+    process = Popen([ 'locate', '-0' ] + patterns, stdout=PIPE)
     paths = process.stdout.read().strip('\0').split('\0')
     return [ (os.path.dirname(p), DOTDIRS[os.path.basename(p)]) for p in paths
              if not os.path.islink(p) and os.path.isdir(p) ]
@@ -73,7 +85,7 @@ def scan(repos, verbose):
         if lines is None:  # signal that we should ignore this one
             continue
         if lines or verbose:
-            print path, '- Subversion'
+            print path, '-', vcsname
             for line in lines:
                 print line
             print
