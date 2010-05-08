@@ -1,3 +1,3 @@
-"""Scans a filesystem for repositories with uncommitted SVN or Hg changes."""
+"""Scans a filesystem for repositories with uncommitted SVN or Hg or Git changes."""
 
-__version__ = '1.1'
+__version__ = '1.2'

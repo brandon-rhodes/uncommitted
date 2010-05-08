@@ -52,6 +52,7 @@ Supported VCs
 At the moment, "uncommitted" supports:
 
 * `Mercurial`_ (.hg directories)
+* `Git`_ (.git directories)
 * `Subversion`_ (.svn directories)
 
 It needs to support `Git`_ soon, since that DVCS is in widespread use.
@@ -76,6 +77,11 @@ that can be a useful direction for the next phase of development!
 
 Changelog
 ---------
+
+**1.2** (2010 May 08)
+
+- *Feature:* Eapen added Git support - http://eapen.in 
+
 
 **1.1** (2010 April 24)
 
