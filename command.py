@@ -54,7 +54,7 @@ def status_mercurial(path, ignore_set):
     return lines
     
 def status_git(path, ignore_set):
-    """Return text lines describing the status of a Mercurial repository."""
+    """Return text lines describing the status of a Git repository."""
     process = Popen(('git', 'st', '-s'), stdout=PIPE, cwd=path)
     st = process.stdout.read()
     lines = [ l for l in st.splitlines() if not l.startswith('?') ]
@@ -80,9 +80,11 @@ def status_subversion(path, ignore_set):
     return keepers
 
 DOTDIRS = {'.hg': 'Mercurial', '.git': 'Git', '.svn': 'Subversion'}
-STATUS_FUNCTIONS = {'Mercurial': status_mercurial,
-					'Git': status_git,
-                    'Subversion': status_subversion}
+STATUS_FUNCTIONS = {
+    'Mercurial': status_mercurial,
+    'Git': status_git,
+    'Subversion': status_subversion,
+    }
 
 def scan(repos, verbose):
     """Given a repository list [(path, vcsname), ...], scan each of them."""
