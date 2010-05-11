@@ -69,6 +69,10 @@ that can be a useful direction for the next phase of development!
 Changelog
 ---------
 
+**1.3** (2010 May 10)
+
+- *Bugfix*: the Git command is "status" not "st".
+
 **1.2** (2010 May 9)
 
 - `Eapen`_ contributed code to support Git.

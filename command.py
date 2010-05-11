@@ -55,7 +55,7 @@ def status_mercurial(path, ignore_set):
     
 def status_git(path, ignore_set):
     """Return text lines describing the status of a Git repository."""
-    process = Popen(('git', 'st', '-s'), stdout=PIPE, cwd=path)
+    process = Popen(('git', 'status', '-s'), stdout=PIPE, cwd=path)
     st = process.stdout.read()
     lines = [ l for l in st.splitlines() if not l.startswith('?') ]
     return lines    
