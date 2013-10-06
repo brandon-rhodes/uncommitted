@@ -48,17 +48,18 @@ def find_repositories_by_walking(path):
 
 def status_mercurial(path, ignore_set):
     """Return text lines describing the status of a Mercurial repository."""
-    process = Popen(('hg', 'st'), stdout=PIPE, cwd=path)
-    st = process.stdout.read()
+    process = Popen(('hg', '--config', 'extensions.color=!', 'st'),
+                    stdout=PIPE, cwd=path)
+    st = process.stdout.read().decode()
     lines = [ l for l in st.splitlines() if not l.startswith('?') ]
     return lines
-    
+
 def status_git(path, ignore_set):
     """Return text lines describing the status of a Git repository."""
     process = Popen(('git', 'status', '-s'), stdout=PIPE, cwd=path)
-    st = process.stdout.read()
+    st = process.stdout.read().decode()
     lines = [ l for l in st.splitlines() if not l.startswith('?') ]
-    return lines    
+    return lines
 
 def status_subversion(path, ignore_set):
     """Return text lines describing the status of a Subversion repository."""
@@ -95,10 +96,10 @@ def scan(repos, verbose):
         if lines is None:  # signal that we should ignore this one
             continue
         if lines or verbose:
-            print path, '-', vcsname
+            print('{} - {}'.format(path, vcsname))
             for line in lines:
-                print line
-            print
+                print(line)
+            print('')
 
 def main():
     parser = OptionParser(usage=USAGE)
