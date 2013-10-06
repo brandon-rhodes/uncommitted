@@ -11,7 +11,7 @@ setup(
     long_description=long_description.lstrip(),
     author='Brandon Rhodes',
     author_email='brandon@rhodesmill.org',
-    url='http://github.com/brandon/uncommitted/',
+    url='https://github.com/brandon-rhodes/uncommitted',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
