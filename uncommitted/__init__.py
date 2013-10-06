@@ -1,6 +1,4 @@
-
-``uncommitted`` -- Scan Version Control For Uncommitted Changes
-===============================================================
+"""Scan filesystem for changes not committed to version control
 
 When working on one version-controlled project on my hard drive, I often
 flip over quickly to another project to make a quick change.  By the end
@@ -89,3 +87,6 @@ Changelog
 .. _Git: http://git-scm.com/
 .. _pyvcs: http://github.com/alex/pyvcs/blob/master/README.txt
 .. _Eapen: http://eapen.in
+"""
+
+__version__ = '1.3'
