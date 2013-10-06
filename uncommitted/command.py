@@ -119,10 +119,10 @@ def main():
         sys.stderr.write('Error: you cannot specify both "-l" and "-w"\n')
         exit(2)
 
-    if options.use_walk:
-        find_repos = find_repositories_by_walking
-    else:
+    if options.use_locate:
         find_repos = find_repositories_with_locate
+    else:
+        find_repos = find_repositories_by_walking
 
     repos = set()
 

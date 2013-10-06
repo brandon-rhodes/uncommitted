@@ -33,7 +33,7 @@ def test_uncommitted():
     tempdir = tempfile.mkdtemp(prefix='uncommitted-test')
     try:
         create_checkouts(tempdir)
-        sys.argv[:] = ['uncommitted', '-w', tempdir]
+        sys.argv[:] = ['uncommitted', tempdir]
         io = StringIO()
         stdout = sys.stdout
         try:
