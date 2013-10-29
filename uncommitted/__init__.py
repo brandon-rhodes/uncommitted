@@ -68,6 +68,11 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
+**1.5** (2013 Oct 29)
+
+- Fix Subversion support under Python 3.
+- Add Subversion to the test suite.
+
 **1.4** (2013 Oct 5)
 
 - Made ``-w`` the default, not ``-l``.
@@ -95,4 +100,4 @@ Changelog
 
 """
 
-__version__ = '1.4'
+__version__ = '1.5'
