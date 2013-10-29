@@ -5,7 +5,6 @@ import shutil
 import sys
 import tempfile
 import uncommitted.command
-from os.path import join
 from subprocess import check_call
 from textwrap import dedent
 
@@ -16,17 +15,27 @@ else:
 
 def create_checkouts(tempdir):
     cc = check_call
-    for system in 'git', 'hg': #, 'svn':
+    for system in 'git', 'hg', 'svn':
         for state in 'clean', 'dirty':
-            d = join(tempdir, system + '-' + state)
-            os.mkdir(d)
-            with open(join(d, 'maxim.txt'), 'w') as f:
+            d = os.path.join(tempdir, system + '-' + state)
+
+            if system == 'svn':
+                repo = d + '-repo'
+                repo_url = 'file://' + repo.replace(os.sep, '/')
+                cc(['svnadmin', 'create', repo])
+                cc(['svn', 'co', repo_url, d])
+            else:
+                os.mkdir(d)
+                cc([system, 'init', '.'], cwd=d)
+
+            with open(os.path.join(d, 'maxim.txt'), 'w') as f:
                 f.write(maxim)
-            cc([system, 'init', '.'], cwd=d)
+
             cc([system, 'add', 'maxim.txt'], cwd=d)
             cc([system, 'ci', '-m', 'Add a maxim'], cwd=d)
+
             if state == 'dirty':
-                with open(join(d, 'maxim.txt'), 'a') as f:
+                with open(os.path.join(d, 'maxim.txt'), 'a') as f:
                     f.write(more_maxim)
 
 def test_uncommitted():
@@ -52,6 +61,9 @@ expected = dedent("""\
 
     {tempdir}/hg-dirty - Mercurial
     M maxim.txt
+
+    {tempdir}/svn-dirty - Subversion
+    M       maxim.txt
 
     """)
 

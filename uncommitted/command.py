@@ -66,7 +66,7 @@ def status_subversion(path, ignore_set):
     if path in ignore_set:
         return
     process = Popen(('svn', 'st', '-v'), stdout=PIPE, cwd=path)
-    output = process.stdout.read()
+    output = process.stdout.read().decode()
     keepers = []
     for line in output.splitlines():
         if not line.strip():
