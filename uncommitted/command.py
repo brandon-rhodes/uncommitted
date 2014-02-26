@@ -4,7 +4,7 @@ import os
 import re
 import sys
 from optparse import OptionParser
-from subprocess import Popen, PIPE
+from subprocess import CalledProcessError, check_output
 
 USAGE = '''usage: %prog [options] path [path...]
 
@@ -24,16 +24,18 @@ def escape(s):
 
 def find_repositories_with_locate(path):
     """Use locate to return a sequence of (path, vcsname) pairs."""
-    patterns = []
+    command = ['locate', '-0']
     for dotdir in DOTDIRS:
         # Escaping the slash (using '\/' rather than '/') is an
         # important signal to locate(1) that these glob patterns are
         # supposed to match the full path, so that things like
         # '.hgignore' files do not show up in the result.
-        patterns.append(r'%s\/%s' % (escape(path), escape(dotdir)))
-        patterns.append(r'%s\/*/%s' % (escape(path), escape(dotdir)))
-    process = Popen([ 'locate', '-0' ] + patterns, stdout=PIPE)
-    paths = process.stdout.read().strip('\0').split('\0')
+        command.append(r'%s\/%s' % (escape(path), escape(dotdir)))
+        command.append(r'%s\/*/%s' % (escape(path), escape(dotdir)))
+    try:
+        paths = check_output(command).strip('\0').split('\0')
+    except CalledProcessError:
+        return []
     return [ (os.path.dirname(p), DOTDIRS[os.path.basename(p)]) for p in paths
              if not os.path.islink(p) and os.path.isdir(p) ]
 
@@ -49,25 +51,21 @@ def find_repositories_by_walking(path):
 
 def status_mercurial(path, ignore_set):
     """Return text lines describing the status of a Mercurial repository."""
-    process = Popen(('hg', '--config', 'extensions.color=!', 'st'),
-                    stdout=PIPE, cwd=path)
-    st = process.stdout.read().decode()
-    lines = [ ' ' + l for l in st.splitlines() if not l.startswith('?') ]
-    return lines
+    command = ('hg', '--config', 'extensions.color=!', 'st')
+    lines = check_output(command, cwd=path).decode().splitlines()
+    return [ ' ' + l for l in lines if not l.startswith('?') ]
 
 def status_git(path, ignore_set):
     """Return text lines describing the status of a Git repository."""
-    process = Popen(('git', 'status', '-s'), stdout=PIPE, cwd=path)
-    st = process.stdout.read().decode()
-    lines = [ l for l in st.splitlines() if not l.startswith('?') ]
-    return lines
+    command = ('git', 'status', '-s')
+    lines = check_output(command, cwd=path).decode().splitlines()
+    return [ l for l in lines if not l.startswith('?') ]
 
 def status_subversion(path, ignore_set):
     """Return text lines describing the status of a Subversion repository."""
     if path in ignore_set:
         return
-    process = Popen(('svn', 'st', '-v'), stdout=PIPE, cwd=path)
-    output = process.stdout.read().decode()
+    output = check_output(('svn', 'st', '-v'), cwd=path).decode()
     keepers = []
     for line in output.splitlines():
         if not line.strip():
