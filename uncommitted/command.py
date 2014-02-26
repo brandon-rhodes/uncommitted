@@ -52,7 +52,7 @@ def status_mercurial(path, ignore_set):
     process = Popen(('hg', '--config', 'extensions.color=!', 'st'),
                     stdout=PIPE, cwd=path)
     st = process.stdout.read().decode()
-    lines = [ l for l in st.splitlines() if not l.startswith('?') ]
+    lines = [ ' ' + l for l in st.splitlines() if not l.startswith('?') ]
     return lines
 
 def status_git(path, ignore_set):
@@ -78,7 +78,7 @@ def status_subversion(path, ignore_set):
         filename = line[8:].split(None, 3)[-1]
         ignore_set.add(os.path.join(path, filename))
         if status.strip():
-            keepers.append(status + filename)
+            keepers.append(' ' + status + filename)
     return keepers
 
 DOTDIRS = {'.hg': 'Mercurial', '.git': 'Git', '.svn': 'Subversion'}

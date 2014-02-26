@@ -60,10 +60,10 @@ expected = dedent("""\
      M maxim.txt
 
     {tempdir}/hg-dirty - Mercurial
-    M maxim.txt
+     M maxim.txt
 
     {tempdir}/svn-dirty - Subversion
-    M       maxim.txt
+     M       maxim.txt
 
     """)
 
