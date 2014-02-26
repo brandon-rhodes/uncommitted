@@ -23,7 +23,7 @@ def escape(s):
     return globchar.sub(r'\\\1', s)
 
 def find_repositories_with_locate(path):
-    """Use locate to return a sequence of (path, vcsname) pairs."""
+    """Use locate to return a sequence of (directory, dotdir) pairs."""
     command = ['locate', '-0']
     for dotdir in DOTDIRS:
         # Escaping the slash (using '\/' rather than '/') is an
@@ -36,17 +36,15 @@ def find_repositories_with_locate(path):
         paths = check_output(command).strip('\0').split('\0')
     except CalledProcessError:
         return []
-    return [ (os.path.dirname(p), DOTDIRS[os.path.basename(p)]) for p in paths
+    return [ os.path.split(p) for p in paths
              if not os.path.islink(p) and os.path.isdir(p) ]
 
 def find_repositories_by_walking(path):
-    """Walk a tree and return a sequence of (path, vcsname) pairs."""
+    """Walk a tree and return a sequence of (directory, dotdir) pairs."""
     repos = []
-    DOTDIRS_items = DOTDIRS.items()
     for dirpath, dirnames, filenames in os.walk(path):
-        for dotdir, vcsname in DOTDIRS_items:
-            if dotdir in dirnames:
-                repos.append((dirpath, vcsname))
+        for dotdir in set(dirnames) & DOTDIRS:
+            repos.append((dirpath, dotdir))
     return repos
 
 def status_mercurial(path, ignore_set):
@@ -79,23 +77,23 @@ def status_subversion(path, ignore_set):
             keepers.append(' ' + status + filename)
     return keepers
 
-DOTDIRS = {'.hg': 'Mercurial', '.git': 'Git', '.svn': 'Subversion'}
-STATUS_FUNCTIONS = {
-    'Mercurial': status_mercurial,
-    'Git': status_git,
-    'Subversion': status_subversion,
+SYSTEMS = {
+    '.git': ('Git', status_git),
+    '.hg': ('Mercurial', status_mercurial),
+    '.svn': ('Subversion', status_subversion),
     }
+DOTDIRS = set(SYSTEMS)
 
 def scan(repos, verbose):
     """Given a repository list [(path, vcsname), ...], scan each of them."""
     ignore_set = set()
-    for path, vcsname in repos:
-        get_status = STATUS_FUNCTIONS[vcsname]
-        lines = get_status(path, ignore_set)
+    for directory, dotdir in repos:
+        vcsname, get_status = SYSTEMS[dotdir]
+        lines = get_status(directory, ignore_set)
         if lines is None:  # signal that we should ignore this one
             continue
         if lines or verbose:
-            print('{} - {}'.format(path, vcsname))
+            print('{} - {}'.format(directory, vcsname))
             for line in lines:
                 print(line)
             print('')
