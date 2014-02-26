@@ -8,9 +8,10 @@ from subprocess import Popen, PIPE
 
 USAGE = '''usage: %prog [options] path [path...]
 
-  Checks the status of all Subversion and Mercurial repositories beneath the
-  paths given on the command line.  Any repositories with uncommitted changes
-  are printed to standard out, along with the status of the files inside.'''
+  Checks the status of all git, Subversion, and Mercurial repositories
+  beneath the paths given on the command line.  Any repositories with
+  uncommitted or unpushed changes are printed to standard out, along
+  with the status of the files inside.'''
 
 class ErrorCannotLocate(Exception):
     """Signal that we cannot successfully run the locate(1) binary."""
@@ -104,11 +105,11 @@ def scan(repos, verbose):
 def main():
     parser = OptionParser(usage=USAGE)
     parser.add_option('-l', '--locate', dest='use_locate', action='store_true',
-                      help='use locate(1) to find repositories')
+        help='use locate(1) to find repositories (instead of walking)')
     parser.add_option('-v', '--verbose', action='store_true',
-                      help='print every repository whether changed or not')
+        help='print every repository whether changed or not')
     parser.add_option('-w', '--walk', dest='use_walk', action='store_true',
-                      help='manually walk file tree to find repositories')
+        help='manually walk file tree to find repositories (the default)')
     (options, args) = parser.parse_args()
 
     if not args:
