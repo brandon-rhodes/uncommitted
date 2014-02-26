@@ -68,6 +68,10 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
+**1.6** (2014 Feb 26)
+
+- Show whether git commits need to be pushed.
+
 **1.5** (2013 Oct 29)
 
 - Fix Subversion support under Python 3.
@@ -99,5 +103,4 @@ Changelog
 .. _Eapen: http://eapen.in
 
 """
-
-__version__ = '1.5'
+__version__ = '1.6'
