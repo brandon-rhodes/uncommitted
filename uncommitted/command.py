@@ -18,6 +18,14 @@ class ErrorCannotLocate(Exception):
 
 globchar = re.compile(r'([][*?])')
 
+def run(command, **kw):
+    """Run `command`, catch any exception, and return lines of output."""
+    try:
+        output = check_output(command, **kw)
+    except CalledProcessError:
+        return []
+    return output.decode().splitlines()
+
 def escape(s):
     """Escape the characters special to locate(1) globbing."""
     return globchar.sub(r'\\\1', s)
@@ -49,23 +57,20 @@ def find_repositories_by_walking(path):
 
 def status_mercurial(path, ignore_set):
     """Return text lines describing the status of a Mercurial repository."""
-    command = ('hg', '--config', 'extensions.color=!', 'st')
-    lines = check_output(command, cwd=path).decode().splitlines()
+    lines = run(['hg', '--config', 'extensions.color=!', 'st'], cwd=path)
     return [ ' ' + l for l in lines if not l.startswith('?') ]
 
 def status_git(path, ignore_set):
     """Return text lines describing the status of a Git repository."""
-    command = ('git', 'status', '-s')
-    lines = check_output(command, cwd=path).decode().splitlines()
+    lines = run(('git', 'status', '-s'), cwd=path)
     return [ l for l in lines if not l.startswith('?') ]
 
 def status_subversion(path, ignore_set):
     """Return text lines describing the status of a Subversion repository."""
     if path in ignore_set:
         return
-    output = check_output(('svn', 'st', '-v'), cwd=path).decode()
     keepers = []
-    for line in output.splitlines():
+    for line in run(['svn', 'st', '-v'], cwd=path):
         if not line.strip():
             continue
         if line.startswith('Performing') or line[0] in 'X?':
