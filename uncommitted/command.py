@@ -62,8 +62,10 @@ def status_mercurial(path, ignore_set):
 
 def status_git(path, ignore_set):
     """Return text lines describing the status of a Git repository."""
-    lines = run(('git', 'status', '-s'), cwd=path)
-    return [ l for l in lines if not l.startswith('?') ]
+    lines = run(('git', 'status', '-s', '-b'), cwd=path)
+    return [ l for l in lines
+             if not l.startswith('?')
+                and (not l.startswith('##')) or ('ahead' in l)]
 
 def status_subversion(path, ignore_set):
     """Return text lines describing the status of a Subversion repository."""
