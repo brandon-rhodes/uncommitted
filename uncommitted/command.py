@@ -63,11 +63,18 @@ def status_mercurial(path, ignore_set):
 
 def status_git(path, ignore_set):
     """Return text lines describing the status of a Git repository."""
-    lines = run(('git', 'status', '-s', '-b'), cwd=path)
+    # Check current branch:
     global untracked
-    return [ l for l in lines
-             if (not l.startswith('?') or untracked)
-                and (not l.startswith('##')) or ('ahead' in l)]
+    lines = [ l for l in run(('git', 'status', '-s', '-b'), cwd=path)
+              if (not l.startswith('?') or untracked)
+                 and (not l.startswith('##')) or ('ahead' in l)]
+    if len(lines):
+        return lines # changes detected, no need to check other branches
+
+    # Check other branches:
+    lines = [ l for l in run(('git', 'branch', '-v'), cwd=path)
+              if ('ahead' in l)]
+    return lines
 
 def status_subversion(path, ignore_set):
     """Return text lines describing the status of a Subversion repository."""
