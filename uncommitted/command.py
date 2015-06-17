@@ -51,7 +51,7 @@ def find_repositories_with_locate(path):
 def find_repositories_by_walking(path):
     """Walk a tree and return a sequence of (directory, dotdir) pairs."""
     repos = []
-    for dirpath, dirnames, filenames in os.walk(path):
+    for dirpath, dirnames, filenames in os.walk(path, followlinks=True):
         for dotdir in set(dirnames) & DOTDIRS:
             repos.append((dirpath, dotdir))
     return repos
