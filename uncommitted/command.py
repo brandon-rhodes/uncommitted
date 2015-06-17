@@ -6,6 +6,7 @@ import sys
 from optparse import OptionParser
 from subprocess import CalledProcessError, check_output
 
+untracked = False
 USAGE = '''usage: %prog [options] path [path...]
 
   Checks the status of all git, Subversion, and Mercurial repositories
@@ -50,7 +51,7 @@ def find_repositories_with_locate(path):
 def find_repositories_by_walking(path):
     """Walk a tree and return a sequence of (directory, dotdir) pairs."""
     repos = []
-    for dirpath, dirnames, filenames in os.walk(path):
+    for dirpath, dirnames, filenames in os.walk(path, followlinks=True):
         for dotdir in set(dirnames) & DOTDIRS:
             repos.append((dirpath, dotdir))
     return repos
@@ -63,8 +64,9 @@ def status_mercurial(path, ignore_set):
 def status_git(path, ignore_set):
     """Return text lines describing the status of a Git repository."""
     # Check current branch:
+    global untracked
     lines = [ l for l in run(('git', 'status', '-s', '-b'), cwd=path)
-              if not l.startswith('?')
+              if (not l.startswith('?') or untracked)
                  and (not l.startswith('##')) or ('ahead' in l)]
     if len(lines):
         return lines # changes detected, no need to check other branches
@@ -120,6 +122,8 @@ def main():
         help='print every repository whether changed or not')
     parser.add_option('-w', '--walk', dest='use_walk', action='store_true',
         help='manually walk file tree to find repositories (the default)')
+    parser.add_option('-u', '--untracked', dest='use_untracked', action='store_true',
+        help='print untracked files (git only)')
     (options, args) = parser.parse_args()
 
     if not args:
@@ -134,6 +138,10 @@ def main():
         find_repos = find_repositories_with_locate
     else:
         find_repos = find_repositories_by_walking
+
+    global untracked
+    if options.use_untracked:
+        untracked = True
 
     repos = set()
 
