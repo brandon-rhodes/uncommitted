@@ -6,6 +6,7 @@ import sys
 from optparse import OptionParser
 from subprocess import CalledProcessError, check_output
 
+untracked = False
 USAGE = '''usage: %prog [options] path [path...]
 
   Checks the status of all git, Subversion, and Mercurial repositories
@@ -63,8 +64,9 @@ def status_mercurial(path, ignore_set):
 def status_git(path, ignore_set):
     """Return text lines describing the status of a Git repository."""
     lines = run(('git', 'status', '-s', '-b'), cwd=path)
+    global untracked
     return [ l for l in lines
-             if not l.startswith('?')
+             if (not l.startswith('?') or untracked)
                 and (not l.startswith('##')) or ('ahead' in l)]
 
 def status_subversion(path, ignore_set):
@@ -113,6 +115,8 @@ def main():
         help='print every repository whether changed or not')
     parser.add_option('-w', '--walk', dest='use_walk', action='store_true',
         help='manually walk file tree to find repositories (the default)')
+    parser.add_option('-u', '--untracked', dest='use_untracked', action='store_true',
+        help='print untracked files (git only)')
     (options, args) = parser.parse_args()
 
     if not args:
@@ -127,6 +131,10 @@ def main():
         find_repos = find_repositories_with_locate
     else:
         find_repos = find_repositories_by_walking
+
+    global untracked
+    if options.use_untracked:
+        untracked = True
 
     repos = set()
 
