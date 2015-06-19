@@ -7,6 +7,7 @@ from optparse import OptionParser
 from subprocess import CalledProcessError, check_output
 
 untracked = False
+non_tracking = False
 USAGE = '''usage: %prog [options] path [path...]
 
   Checks the status of all git, Subversion, and Mercurial repositories
@@ -63,17 +64,24 @@ def status_mercurial(path, ignore_set):
 
 def status_git(path, ignore_set):
     """Return text lines describing the status of a Git repository."""
-    # Check current branch:
-    global untracked
+    # Check current branch for changes and unpushed commits:
     lines = [ l for l in run(('git', 'status', '-s', '-b'), cwd=path)
               if (not l.startswith('?') or untracked)
                  and (not l.startswith('##')) or ('ahead' in l)]
     if len(lines):
         return lines # changes detected, no need to check other branches
 
-    # Check other branches:
+    # Check other branches for unpushed commits:
     lines = [ l for l in run(('git', 'branch', '-v'), cwd=path)
               if ('ahead' in l)]
+    if len(lines):
+        return lines # unpushed commits detected, no need to list non-tracking branches
+
+    # Check for non-tracking branches:
+    if non_tracking:
+        lines = [ l for l in run(('git', 'for-each-ref', '--format=[%(refname:short)]%(upstream)',
+                                  'refs/heads'), cwd=path)
+                  if l.endswith(']')]
     return lines
 
 def status_subversion(path, ignore_set):
@@ -124,6 +132,8 @@ def main():
         help='manually walk file tree to find repositories (the default)')
     parser.add_option('-u', '--untracked', dest='use_untracked', action='store_true',
         help='print untracked files (git only)')
+    parser.add_option('-n', '--non-tracking', dest='non_tracking', action='store_true',
+        help='print non-tracking branches (git only)')
     (options, args) = parser.parse_args()
 
     if not args:
@@ -142,6 +152,10 @@ def main():
     global untracked
     if options.use_untracked:
         untracked = True
+
+    global non_tracking
+    if options.non_tracking:
+        non_tracking = True
 
     repos = set()
 
