@@ -3,6 +3,7 @@
 import os
 import re
 import sys
+from functools import partial
 from optparse import OptionParser
 from subprocess import CalledProcessError, check_output
 
@@ -47,10 +48,10 @@ def find_repositories_with_locate(path):
     return [ os.path.split(p) for p in paths
              if not os.path.islink(p) and os.path.isdir(p) ]
 
-def find_repositories_by_walking(path):
+def find_repositories_by_walking(path, followlinks):
     """Walk a tree and return a sequence of (directory, dotdir) pairs."""
     repos = []
-    for dirpath, dirnames, filenames in os.walk(path):
+    for dirpath, dirnames, filenames in os.walk(path, followlinks=followlinks):
         for dotdir in set(dirnames) & DOTDIRS:
             repos.append((dirpath, dotdir))
     return repos
@@ -113,20 +114,22 @@ def main():
         help='print every repository whether changed or not')
     parser.add_option('-w', '--walk', dest='use_walk', action='store_true',
         help='manually walk file tree to find repositories (the default)')
+    parser.add_option('-L', dest='follow_symlinks', action='store_true',
+        help='follow symbolic links when walking file tree')
     (options, args) = parser.parse_args()
 
     if not args:
         parser.print_help()
         exit(2)
 
-    if options.use_locate and options.use_walk:
-        sys.stderr.write('Error: you cannot specify both "-l" and "-w"\n')
+    if options.use_locate and (options.use_walk or options.follow_symlinks):
+        sys.stderr.write('Error: you cannot use "-l" together with "-w" or "-L"\n')
         exit(2)
 
     if options.use_locate:
         find_repos = find_repositories_with_locate
     else:
-        find_repos = find_repositories_by_walking
+        find_repos = partial(find_repositories_by_walking, followlinks=options.follow_symlinks)
 
     repos = set()
 
