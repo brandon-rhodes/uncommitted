@@ -15,6 +15,8 @@ else:
 
 def create_checkouts(tempdir):
     cc = check_call
+    cc(['git', 'config', '--global', 'user.email', 'you@example.com'])
+    cc(['git', 'config', '--global', 'user.name', 'Your Name'])
     for system in 'git', 'hg', 'svn':
         for state in 'clean', 'dirty':
             d = os.path.join(tempdir, system + '-' + state)
