@@ -32,7 +32,7 @@ def create_checkouts(tempdir):
                 f.write(maxim)
 
             cc([system, 'add', 'maxim.txt'], cwd=d)
-            cc([system, 'ci', '-m', 'Add a maxim'], cwd=d)
+            cc([system, 'commit', '-m', 'Add a maxim'], cwd=d)
 
             if state == 'dirty':
                 with open(os.path.join(d, 'maxim.txt'), 'a') as f:
