@@ -1,4 +1,5 @@
-MANIFEST
-dist/
+/MANIFEST
+/dist/
 *.pyc
-.tox/
+/.cache/
+/.tox/
