@@ -24,7 +24,7 @@ def tempdir():
 
 @pytest.fixture(scope='module')
 def cc(tempdir):
-    """Helper for `check_call`."""
+    """Wrapper around `check_call` that sets $HOME to a temp directory."""
     def helper(*args, **kwargs):
         # Let's use tempdir as home folder so we don't touch the user's config
         # files (e.g. ~/.gitconfig):
@@ -40,7 +40,7 @@ def git_identity(cc):
     cc(['git', 'config', '--global', 'user.email', 'you@example.com'])
     cc(['git', 'config', '--global', 'user.name', 'Your Name'])
 
-versionned_filename = 'maxim.txt'
+filename = 'maxim.txt'
 
 maxim = dedent("""\
     A complex system that works
@@ -83,17 +83,17 @@ def checkouts(git_identity, tempdir, cc):
                 cc([system, 'init', '.'], cwd=d)
 
             # Initial commit to the master branch:
-            file_to_edit = os.path.join(d, versionned_filename)
+            file_to_edit = os.path.join(d, filename)
             with open(file_to_edit, 'w') as f:
                 f.write(maxim)
-            cc([system, 'add', versionned_filename], cwd=d)
+            cc([system, 'add', filename], cwd=d)
             cc([system, 'commit', '-m', 'Add a maxim'], cwd=d)
 
             # Another commit to the master branch:
             if system != 'svn':
                 with open(file_to_edit, 'a') as f:
                     f.write(more_maxim)
-                cc([system, 'add', versionned_filename], cwd=d)
+                cc([system, 'add', filename], cwd=d)
                 cc([system, 'commit', '-m', 'Add more maxim'], cwd=d)
 
             # Make the master branch dirty:
@@ -137,10 +137,10 @@ def clones(git_identity, tempdir, checkouts, cc):
                 cc([system, 'reset', '--hard', 'HEAD~1'], cwd=complex_clone_dir)
             if ahead:
                 file_to_edit = os.path.join(complex_clone_dir,
-                                            versionned_filename)
+                                            filename)
                 with open(file_to_edit, 'a') as f:
                     f.write(even_more_maxim)
-                cc([system, 'add', versionned_filename], cwd=complex_clone_dir)
+                cc([system, 'add', filename], cwd=complex_clone_dir)
                 cc([system, 'commit', '-m', 'Even more maxim'],
                    cwd=complex_clone_dir)
 
@@ -149,8 +149,7 @@ def clones(git_identity, tempdir, checkouts, cc):
     return clones_dir
 
 def run(*args):
-    """Runs uncommitted with the given arguments.
-    Returns its standard output."""
+    """Runs uncommitted with the given arguments, returning stdout."""
     sys.argv[:] = args
     sys.argv.insert(0, 'uncommitted')
     io = StringIO()
@@ -163,8 +162,7 @@ def run(*args):
     return io.getvalue()
 
 def test_uncommitted(checkouts):
-    """Tests that `uncommitted` detects repositories having uncommitted
-    changes."""
+    """Do we detect repositories having uncommitted changes?"""
     actual_output = run(checkouts)
 
     # All dirty checkouts and only them:
@@ -178,13 +176,12 @@ def test_uncommitted(checkouts):
         {path}/svn-dirty - Subversion
          M       {filename}
 
-        """).format(path=checkouts, filename=versionned_filename)
+        """).format(path=checkouts, filename=filename)
 
     assert actual_output == expected_output
 
 def test_unpushed_current_branch(clones):
-    """Tests that `uncommitted` detects when the current branch has unpushed
-    changes."""
+    """Do we detect when the current branch has unpushed changes?"""
     actual_output = run(clones)
 
     # Only the clone for which the current branch is ahead:
@@ -197,16 +194,14 @@ def test_unpushed_current_branch(clones):
     assert actual_output == expected_output
 
 def test_unpushed_other_branches(clones, cc):
-    """Tests that `uncommitted` detects when a non-checked-out branch has unpushed
-    changes."""
-    system = 'git'
-    complex_clone_dir = os.path.join(clones, system + '-complex')
+    """Do we detect a non-checked-out with unpushed changes?"""
+    complex_clone_dir = os.path.join(clones, 'git-complex')
     try:
         # Especially for this test, check out a branch which is up-to-date:
-        cc([system, 'checkout', 'master'], cwd=complex_clone_dir)
+        cc(['git', 'checkout', 'master'], cwd=complex_clone_dir)
         actual_output = run(clones)
     finally:
-        cc([system, 'checkout', 'not-behind-ahead'], cwd=complex_clone_dir)
+        cc(['git', 'checkout', 'not-behind-ahead'], cwd=complex_clone_dir)
 
     # All ahead branches and only them:
     expected_output_regex = re.compile(dedent("""\

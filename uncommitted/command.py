@@ -130,13 +130,15 @@ def main():
         exit(2)
 
     if options.use_locate and (options.use_walk or options.follow_symlinks):
-        sys.stderr.write('Error: you cannot use "-l" together with "-w" or "-L"\n')
+        sys.stderr.write(
+            'Error: you cannot use "-l" together with "-w" or "-L"\n')
         exit(2)
 
     if options.use_locate:
         find_repos = find_repositories_with_locate
     else:
-        find_repos = partial(find_repositories_by_walking, followlinks=options.follow_symlinks)
+        find_repos = partial(find_repositories_by_walking,
+                             followlinks=options.follow_symlinks)
 
     repos = set()
 
