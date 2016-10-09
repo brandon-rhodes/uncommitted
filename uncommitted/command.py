@@ -56,16 +56,16 @@ def find_repositories_by_walking(path, followlinks):
             repos.append((dirpath, dotdir))
     return repos
 
-def status_mercurial(path, ignore_set):
+def status_mercurial(path, ignore_set, options):
     """Return text lines describing the status of a Mercurial repository."""
     lines = run(['hg', '--config', 'extensions.color=!', 'st'], cwd=path)
     return [ ' ' + l for l in lines if not l.startswith('?') ]
 
-def status_git(path, ignore_set):
+def status_git(path, ignore_set, options):
     """Return text lines describing the status of a Git repository."""
     # Check current branch:
     lines = [ l for l in run(('git', 'status', '-s', '-b'), cwd=path)
-              if not l.startswith('?')
+              if (options.untracked or not l.startswith('?'))
                  and (not l.startswith('##')) or (' [ahead ' in l)]
     if len(lines):
         return lines # changes detected, no need to check other branches
@@ -75,7 +75,7 @@ def status_git(path, ignore_set):
               if (' [ahead ' in l)]
     return lines
 
-def status_subversion(path, ignore_set):
+def status_subversion(path, ignore_set, options):
     """Return text lines describing the status of a Subversion repository."""
     if path in ignore_set:
         return
@@ -99,15 +99,15 @@ SYSTEMS = {
     }
 DOTDIRS = set(SYSTEMS)
 
-def scan(repos, verbose):
+def scan(repos, options):
     """Given a repository list [(path, vcsname), ...], scan each of them."""
     ignore_set = set()
     for directory, dotdir in repos:
         vcsname, get_status = SYSTEMS[dotdir]
-        lines = get_status(directory, ignore_set)
+        lines = get_status(directory, ignore_set, options)
         if lines is None:  # signal that we should ignore this one
             continue
-        if lines or verbose:
+        if lines or options.verbose:
             print('{} - {}'.format(directory, vcsname))
             for line in lines:
                 print(line)
@@ -123,6 +123,8 @@ def main():
         help='manually walk file tree to find repositories (the default)')
     parser.add_option('-L', dest='follow_symlinks', action='store_true',
         help='follow symbolic links when walking file tree')
+    parser.add_option('-u', '--untracked', action='store_true',
+        help='print untracked files (git only)')
     (options, args) = parser.parse_args()
 
     if not args:
@@ -150,4 +152,4 @@ def main():
         repos.update(find_repos(path))
 
     repos = sorted(repos)
-    scan(repos, options.verbose)
+    scan(repos, options)
