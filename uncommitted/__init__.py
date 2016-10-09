@@ -68,6 +68,12 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
+**1.7** (2016 Oct 9)
+
+- Report all un-pushed git commits, not only commits for the current branch.
+- Add ``-L`` that follows symlinks while walking filesystem.
+- Add ``-u`` that prints untracked files in git repositories.
+
 **1.6** (2014 Feb 26)
 
 - Show whether git commits need to be pushed.
@@ -103,4 +109,4 @@ Changelog
 .. _Eapen: http://eapen.in
 
 """
-__version__ = '1.6'
+__version__ = '1.7'
