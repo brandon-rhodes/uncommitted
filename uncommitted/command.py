@@ -7,7 +7,6 @@ from functools import partial
 from optparse import OptionParser
 from subprocess import CalledProcessError, check_output
 
-non_tracking = False
 USAGE = '''usage: %prog [options] path [path...]
 
   Checks the status of all git, Subversion, and Mercurial repositories
@@ -78,7 +77,7 @@ def status_git(path, ignore_set, options):
         return lines # unpushed commits detected, no need to list non-tracking branches
 
     # Check for non-tracking branches:
-    if non_tracking:
+    if options.non_tracking:
         lines = [ l for l in run(('git', 'for-each-ref', '--format=[%(refname:short)]%(upstream)',
                                   'refs/heads'), cwd=path)
                   if l.endswith(']')]
@@ -134,7 +133,7 @@ def main():
         help='follow symbolic links when walking file tree')
     parser.add_option('-u', '--untracked', action='store_true',
         help='print untracked files (git only)')
-    parser.add_option('-n', '--non-tracking', dest='non_tracking', action='store_true',
+    parser.add_option('-n', '--non-tracking', action='store_true',
         help='print non-tracking branches (git only)')
     (options, args) = parser.parse_args()
 
@@ -152,10 +151,6 @@ def main():
     else:
         find_repos = partial(find_repositories_by_walking,
                              followlinks=options.follow_symlinks)
-
-    global non_tracking
-    if options.non_tracking:
-        non_tracking = True
 
     repos = set()
 
