@@ -3,10 +3,10 @@
 import os
 import re
 import sys
+from functools import partial
 from optparse import OptionParser
 from subprocess import CalledProcessError, check_output
 
-untracked = False
 non_tracking = False
 USAGE = '''usage: %prog [options] path [path...]
 
@@ -49,31 +49,31 @@ def find_repositories_with_locate(path):
     return [ os.path.split(p) for p in paths
              if not os.path.islink(p) and os.path.isdir(p) ]
 
-def find_repositories_by_walking(path):
+def find_repositories_by_walking(path, followlinks):
     """Walk a tree and return a sequence of (directory, dotdir) pairs."""
     repos = []
-    for dirpath, dirnames, filenames in os.walk(path, followlinks=True):
+    for dirpath, dirnames, filenames in os.walk(path, followlinks=followlinks):
         for dotdir in set(dirnames) & DOTDIRS:
             repos.append((dirpath, dotdir))
     return repos
 
-def status_mercurial(path, ignore_set):
+def status_mercurial(path, ignore_set, options):
     """Return text lines describing the status of a Mercurial repository."""
     lines = run(['hg', '--config', 'extensions.color=!', 'st'], cwd=path)
     return [ ' ' + l for l in lines if not l.startswith('?') ]
 
-def status_git(path, ignore_set):
+def status_git(path, ignore_set, options):
     """Return text lines describing the status of a Git repository."""
     # Check current branch for changes and unpushed commits:
     lines = [ l for l in run(('git', 'status', '-s', '-b'), cwd=path)
-              if (not l.startswith('?') or untracked)
-                 and (not l.startswith('##')) or ('ahead' in l)]
+              if (options.untracked or not l.startswith('?'))
+                 and (not l.startswith('##')) or (' [ahead ' in l)]
     if len(lines):
         return lines # changes detected, no need to check other branches
 
     # Check other branches for unpushed commits:
     lines = [ l for l in run(('git', 'branch', '-v'), cwd=path)
-              if ('ahead' in l)]
+              if (' [ahead ' in l)]
     if len(lines):
         return lines # unpushed commits detected, no need to list non-tracking branches
 
@@ -84,7 +84,7 @@ def status_git(path, ignore_set):
                   if l.endswith(']')]
     return lines
 
-def status_subversion(path, ignore_set):
+def status_subversion(path, ignore_set, options):
     """Return text lines describing the status of a Subversion repository."""
     if path in ignore_set:
         return
@@ -108,15 +108,15 @@ SYSTEMS = {
     }
 DOTDIRS = set(SYSTEMS)
 
-def scan(repos, verbose):
+def scan(repos, options):
     """Given a repository list [(path, vcsname), ...], scan each of them."""
     ignore_set = set()
     for directory, dotdir in repos:
         vcsname, get_status = SYSTEMS[dotdir]
-        lines = get_status(directory, ignore_set)
+        lines = get_status(directory, ignore_set, options)
         if lines is None:  # signal that we should ignore this one
             continue
-        if lines or verbose:
+        if lines or options.verbose:
             print('{} - {}'.format(directory, vcsname))
             for line in lines:
                 print(line)
@@ -130,7 +130,9 @@ def main():
         help='print every repository whether changed or not')
     parser.add_option('-w', '--walk', dest='use_walk', action='store_true',
         help='manually walk file tree to find repositories (the default)')
-    parser.add_option('-u', '--untracked', dest='use_untracked', action='store_true',
+    parser.add_option('-L', dest='follow_symlinks', action='store_true',
+        help='follow symbolic links when walking file tree')
+    parser.add_option('-u', '--untracked', action='store_true',
         help='print untracked files (git only)')
     parser.add_option('-n', '--non-tracking', dest='non_tracking', action='store_true',
         help='print non-tracking branches (git only)')
@@ -140,18 +142,16 @@ def main():
         parser.print_help()
         exit(2)
 
-    if options.use_locate and options.use_walk:
-        sys.stderr.write('Error: you cannot specify both "-l" and "-w"\n')
+    if options.use_locate and (options.use_walk or options.follow_symlinks):
+        sys.stderr.write(
+            'Error: you cannot use "-l" together with "-w" or "-L"\n')
         exit(2)
 
     if options.use_locate:
         find_repos = find_repositories_with_locate
     else:
-        find_repos = find_repositories_by_walking
-
-    global untracked
-    if options.use_untracked:
-        untracked = True
+        find_repos = partial(find_repositories_by_walking,
+                             followlinks=options.follow_symlinks)
 
     global non_tracking
     if options.non_tracking:
@@ -167,4 +167,4 @@ def main():
         repos.update(find_repos(path))
 
     repos = sorted(repos)
-    scan(repos, options.verbose)
+    scan(repos, options)
