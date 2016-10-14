@@ -212,3 +212,17 @@ def test_unpushed_other_branches(clones, cc):
         $""").format(path=clones))
 
     assert expected_output_regex.match(actual_output) is not None
+
+def test_non_tracking(checkouts):
+    """Do we detect non-tracking branches?"""
+    clean_git_repo = os.path.join(checkouts, 'git-clean')
+    actual_output = run(clean_git_repo, '-n')
+
+    # The 'master' branch isn't tracking any remote:
+    expected_output = dedent("""\
+        {path} - Git
+        [master]
+
+        """).format(path=clean_git_repo)
+
+    assert actual_output == expected_output
