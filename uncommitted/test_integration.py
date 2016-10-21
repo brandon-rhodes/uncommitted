@@ -180,34 +180,17 @@ def test_uncommitted(checkouts):
 
     assert actual_output == expected_output
 
-def test_unpushed_current_branch(clones):
-    """Do we detect when the current branch has unpushed changes?"""
+def test_unpushed(clones):
+    """Do we detect when any branch (checked out or not) has unpushed
+    changes?"""
     actual_output = run(clones)
 
-    # Only the clone for which the current branch is ahead:
-    expected_output = dedent("""\
-        {path}/git-complex - Git
-        ## not-behind-ahead...origin/master [ahead 1]
-
-        """).format(path=clones)
-
-    assert actual_output == expected_output
-
-def test_unpushed_other_branches(clones, cc):
-    """Do we detect a non-checked-out with unpushed changes?"""
-    complex_clone_dir = os.path.join(clones, 'git-complex')
-    try:
-        # Especially for this test, check out a branch which is up-to-date:
-        cc(['git', 'checkout', 'master'], cwd=complex_clone_dir)
-        actual_output = run(clones)
-    finally:
-        cc(['git', 'checkout', 'not-behind-ahead'], cwd=complex_clone_dir)
-
-    # All ahead branches and only them:
+    # All ahead branches and only them (the checked-out branch is marked with a
+    # star):
     expected_output_regex = re.compile(dedent("""\
         ^{path}/git-complex - Git
           behind-ahead         .* \[ahead 1, behind 1\] Even more maxim
-          not-behind-ahead     .* \[ahead 1\] Even more maxim
+        \* not-behind-ahead     .* \[ahead 1\] Even more maxim
 
         $""").format(path=clones))
 

@@ -63,24 +63,19 @@ def status_mercurial(path, ignore_set, options):
 
 def status_git(path, ignore_set, options):
     """Return text lines describing the status of a Git repository."""
-    # Check current branch for changes and unpushed commits:
+    # Check whether current branch is dirty:
     lines = [ l for l in run(('git', 'status', '-s', '-b'), cwd=path)
-              if (options.untracked or not l.startswith('?'))
-                 and (not l.startswith('##')) or (' [ahead ' in l)]
-    if len(lines):
-        return lines # changes detected, no need to check other branches
+              if (options.untracked or not l.startswith('?')) and not l.startswith('##')]
 
-    # Check other branches for unpushed commits:
-    lines = [ l for l in run(('git', 'branch', '-v'), cwd=path)
-              if (' [ahead ' in l)]
-    if len(lines):
-        return lines # unpushed commits detected, no need to list non-tracking branches
+    # Check all branches for unpushed commits:
+    lines += [ l for l in run(('git', 'branch', '-v'), cwd=path)
+               if (' [ahead ' in l)]
 
     # Check for non-tracking branches:
     if options.non_tracking:
-        lines = [ l for l in run(('git', 'for-each-ref', '--format=[%(refname:short)]%(upstream)',
-                                  'refs/heads'), cwd=path)
-                  if l.endswith(']')]
+        lines += [ l for l in run(('git', 'for-each-ref', '--format=[%(refname:short)]%(upstream)',
+                                   'refs/heads'), cwd=path)
+                   if l.endswith(']')]
     return lines
 
 def status_subversion(path, ignore_set, options):
