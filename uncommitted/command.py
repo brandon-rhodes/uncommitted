@@ -63,16 +63,19 @@ def status_mercurial(path, ignore_set, options):
 
 def status_git(path, ignore_set, options):
     """Return text lines describing the status of a Git repository."""
-    # Check current branch:
+    # Check whether current branch is dirty:
     lines = [ l for l in run(('git', 'status', '-s', '-b'), cwd=path)
-              if (options.untracked or not l.startswith('?'))
-                 and (not l.startswith('##')) or (' [ahead ' in l)]
-    if len(lines):
-        return lines # changes detected, no need to check other branches
+              if (options.untracked or not l.startswith('?')) and not l.startswith('##')]
 
-    # Check other branches:
-    lines = [ l for l in run(('git', 'branch', '-v'), cwd=path)
-              if (' [ahead ' in l)]
+    # Check all branches for unpushed commits:
+    lines += [ l for l in run(('git', 'branch', '-v'), cwd=path)
+               if (' [ahead ' in l)]
+
+    # Check for non-tracking branches:
+    if options.non_tracking:
+        lines += [ l for l in run(('git', 'for-each-ref', '--format=[%(refname:short)]%(upstream)',
+                                   'refs/heads'), cwd=path)
+                   if l.endswith(']')]
     return lines
 
 def status_subversion(path, ignore_set, options):
@@ -130,6 +133,8 @@ def main():
         help='manually walk file tree to find repositories (the default)')
     parser.add_option('-L', dest='follow_symlinks', action='store_true',
         help='follow symbolic links when walking file tree')
+    parser.add_option('-n', '--non-tracking', action='store_true',
+        help='print non-tracking branches (git only)')
     parser.add_option('-u', '--untracked', action='store_true',
         help='print untracked files (git only)')
     parser.add_option('-I', dest='ignore_patterns', action='append',
