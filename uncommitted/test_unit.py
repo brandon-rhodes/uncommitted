@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import uncommitted.command
 
 def test_run_can_handle_badly_encoded_output():
