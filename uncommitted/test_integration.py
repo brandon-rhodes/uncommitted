@@ -275,3 +275,62 @@ def test_non_tracking(checkouts):
         """).format(path=clean_git_repo)
 
     assert actual_output == expected_output
+
+def test_untracked(checkouts):
+    """Do we detect untracked files?"""
+    system = 'git'
+    repo_with_new_file = os.path.join(checkouts, system + '-clean')
+    new_filename = 'newfile.txt'
+    new_file_path = os.path.join(repo_with_new_file, new_filename)
+    try:
+        # Especially for this test, create a new file:
+        open(new_file_path, 'a').close()
+        actual_output = run(repo_with_new_file, '-u')
+    finally:
+        os.remove(new_file_path)
+
+    expected_output = dedent("""\
+        {path} - Git
+        ?? {filename}
+
+        """).format(path=repo_with_new_file, filename=new_filename)
+
+    assert actual_output == expected_output
+
+def test_verbose(checkouts):
+    """Do we list clean repos in verbose mode as well?"""
+    system = 'git'
+    clean_repo = os.path.join(checkouts, system + '-clean')
+    actual_output = run(clean_repo, '--verbose')
+
+    # The clean repository:
+    expected_output = dedent("""\
+        {path} - Git
+
+        """).format(path=clean_repo)
+
+    assert actual_output == expected_output
+
+def test_follow_symlinks(checkouts):
+    """Do we follow symlinks?"""
+    system = 'git'
+    repo_with_symlink = os.path.join(checkouts, system + '-clean')
+    pointed_repo = os.path.join(checkouts, system + '-dirty')
+    symlink = os.path.join(repo_with_symlink, 'symlink')
+    try:
+        # Especially for this test, create a symlink to `git-dirty` from within
+        # `git-clean`:
+        os.symlink(pointed_repo, symlink)
+        actual_output = run(repo_with_symlink, '-L')
+    finally:
+        os.remove(symlink)
+
+    # Only the pointed dirty repo, as the pointing repo remained clean (the
+    # symlink is just an untracked file):
+    expected_output = dedent("""\
+        {path} - Git
+         M {filename}
+
+        """).format(path=symlink, filename=filename)
+
+    assert actual_output == expected_output
