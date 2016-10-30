@@ -68,6 +68,12 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
+**1.8** (2016 Oct 30)
+
+- Add ``-I`` to ignore repositories matching a substring.
+- Add ``-n`` to detect and list non-tracking branches.
+- *Bugfix:* no longer errors if a filename has encoding errors.
+
 **1.7** (2016 Oct 9)
 
 - Report all un-pushed git commits, not only commits for the current branch.
@@ -109,4 +115,4 @@ Changelog
 .. _Eapen: http://eapen.in
 
 """
-__version__ = '1.7'
+__version__ = '1.8'
