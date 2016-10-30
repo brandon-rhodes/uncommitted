@@ -15,7 +15,7 @@ if sys.version_info.major > 2:
 else:
     from StringIO import StringIO
 
-@pytest.yield_fixture(scope='module')
+@pytest.fixture(scope='module')
 def tempdir():
     """Temporary directory in which all tests will run."""
     tempdir = tempfile.mkdtemp(prefix='uncommitted-test')
