@@ -103,12 +103,11 @@ def scan(repos, options):
     """Given a repository list [(path, vcsname), ...], scan each of them."""
     ignore_set = set()
     for directory, dotdir in repos:
-        """ Skip this repo if -I is used and the directoy contains the ignore string """
-        if options.ignore_dir and options.ignore_dir in directory:
+        ignore_this = any(pat in directory for pat in options.ignore_patterns)
+        if ignore_this:
             if options.verbose:
-                """ Output ignored repos if verbose """
-                print ("Ignoring repo at: " + directory)
-                print
+                print('Ignoring repo: {}'.format(directory))
+                print('')
             continue
 
         vcsname, get_status = SYSTEMS[dotdir]
@@ -133,7 +132,8 @@ def main():
         help='follow symbolic links when walking file tree')
     parser.add_option('-u', '--untracked', action='store_true',
         help='print untracked files (git only)')
-    parser.add_option('-I', dest='ignore_dir', action='store', type="string",
+    parser.add_option('-I', dest='ignore_patterns', action='append',
+        default=[],
         help='ignore any directory paths that contain the specified string')
     (options, args) = parser.parse_args()
 

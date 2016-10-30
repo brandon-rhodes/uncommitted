@@ -69,7 +69,7 @@ def checkouts(git_identity, tempdir, cc):
     os.mkdir(checkouts_dir)
 
     for system in 'git', 'hg', 'svn':
-        for state in 'clean', 'dirty', 'ignoredirectory':
+        for state in 'clean', 'dirty', 'ignore':
             d = os.path.join(checkouts_dir, system + '-' + state)
 
             # Create the repo:
@@ -97,7 +97,7 @@ def checkouts(git_identity, tempdir, cc):
                 cc([system, 'commit', '-m', 'Add more maxim'], cwd=d)
 
             # Make the master branch dirty:
-            if state == 'dirty' or state == 'ignoredirectory':
+            if state == 'dirty' or state == 'ignore':
                 with open(file_to_edit, 'a') as f:
                     f.write(even_more_maxim)
 
@@ -170,28 +170,28 @@ def test_uncommitted(checkouts):
         {path}/git-dirty - Git
          M {filename}
 
-        {path}/git-ignoredirectory - Git
+        {path}/git-ignore - Git
          M {filename}
 
         {path}/hg-dirty - Mercurial
          M {filename}
 
-        {path}/hg-ignoredirectory - Mercurial
+        {path}/hg-ignore - Mercurial
          M {filename}
 
         {path}/svn-dirty - Subversion
          M       {filename}
 
-        {path}/svn-ignoredirectory - Subversion
+        {path}/svn-ignore - Subversion
          M       {filename}
 
         """).format(path=checkouts, filename=filename)
 
     assert actual_output == expected_output
 
-def test_uncommittedIgnore(checkouts):
-    """Do we detect repositories having uncommitted changes that are not ignored?"""
-    actual_output = run("-Iignoredirectory", checkouts)
+def test_uncommitted_ignore_one(checkouts):
+    """Does -I correctly ignore directories?"""
+    actual_output = run('-I', 't-ignore', checkouts)
 
     # All dirty checkouts and only them:
     expected_output = dedent("""\
@@ -201,7 +201,45 @@ def test_uncommittedIgnore(checkouts):
         {path}/hg-dirty - Mercurial
          M {filename}
 
+        {path}/hg-ignore - Mercurial
+         M {filename}
+
         {path}/svn-dirty - Subversion
+         M       {filename}
+
+        {path}/svn-ignore - Subversion
+         M       {filename}
+
+        """).format(path=checkouts, filename=filename)
+
+    assert actual_output == expected_output
+
+def test_uncommitted_ignore_two_verbose(checkouts):
+    """Can -I be offered twice?"""
+    actual_output = run('-I', 't-ignore', '-I', 'g-ignore', '-v', checkouts)
+
+    # All dirty checkouts and only them:
+    expected_output = dedent("""\
+        {path}/git-clean - Git
+
+        {path}/git-dirty - Git
+         M {filename}
+
+        Ignoring repo: {path}/git-ignore
+
+        {path}/hg-clean - Mercurial
+
+        {path}/hg-dirty - Mercurial
+         M {filename}
+
+        Ignoring repo: {path}/hg-ignore
+
+        {path}/svn-clean - Subversion
+
+        {path}/svn-dirty - Subversion
+         M       {filename}
+
+        {path}/svn-ignore - Subversion
          M       {filename}
 
         """).format(path=checkouts, filename=filename)
