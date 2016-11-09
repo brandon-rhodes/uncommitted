@@ -297,6 +297,25 @@ def test_untracked(checkouts):
 
     assert actual_output == expected_output
 
+def test_stash(checkouts, cc):
+    """Do we detect stashed commits?"""
+    system = 'git'
+    dirty_repo = os.path.join(checkouts, system + '-dirty')
+    try:
+        # Especially for this test, stash the changes:
+        cc([system, 'stash'], cwd=dirty_repo)
+        actual_output = run(dirty_repo, '-s')
+    finally:
+        cc([system, 'stash', 'pop'], cwd=dirty_repo)
+
+    expected_output_regex = re.compile(dedent("""\
+        ^{path} - Git
+        stash@\{{0\}}: WIP on master: .* Add more maxim
+
+        $""").format(path=dirty_repo))
+
+    assert expected_output_regex.match(actual_output) is not None
+
 def test_verbose(checkouts):
     """Do we list clean repos in verbose mode as well?"""
     system = 'git'

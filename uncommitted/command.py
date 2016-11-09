@@ -76,6 +76,9 @@ def status_git(path, ignore_set, options):
         lines += [ l for l in run(('git', 'for-each-ref', '--format=[%(refname:short)]%(upstream)',
                                    'refs/heads'), cwd=path)
                    if l.endswith(']')]
+
+    if options.stash:
+        lines += [ l for l in run(('git', 'stash', 'list'), cwd=path) ]
     return lines
 
 def status_subversion(path, ignore_set, options):
@@ -137,6 +140,8 @@ def main():
         help='print non-tracking branches (git only)')
     parser.add_option('-u', '--untracked', action='store_true',
         help='print untracked files (git only)')
+    parser.add_option('-s', '--stash', action='store_true',
+        help='print stash (git only)')
     parser.add_option('-I', dest='ignore_patterns', action='append',
         default=[],
         help='ignore any directory paths that contain the specified string')
