@@ -19,13 +19,16 @@ class ErrorCannotLocate(Exception):
 
 globchar = re.compile(r'([][*?])')
 
+def replace_unknown_characters(output):
+    return output.decode(errors='replace').splitlines()
+
 def run(command, **kw):
     """Run `command`, catch any exception, and return lines of output."""
     try:
         output = check_output(command, **kw)
     except CalledProcessError:
         return []
-    return output.decode(errors='replace').splitlines()
+    return replace_unknown_characters(output)
 
 def escape(s):
     """Escape the characters special to locate(1) globbing."""

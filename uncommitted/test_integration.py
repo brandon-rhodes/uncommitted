@@ -7,20 +7,55 @@ import shutil
 import sys
 import tempfile
 import uncommitted.command
-from subprocess import check_call
+from subprocess import check_call, call
 from textwrap import dedent
+
 
 if sys.version_info.major > 2:
     from io import StringIO
 else:
     from StringIO import StringIO
 
+
+def correct_path_on_windows(path):
+    if sys.platform == 'win32':
+        path = str.replace(path, "\\", "\\\\")
+        sep = os.sep + os.sep
+    else:
+        sep = os.sep
+    return path, sep
+
+
+def handle_remove_read_only(func, path, exc_info):
+    """
+    Error handler for ``shutil.rmtree``.
+
+    If the error is due to an access error (read only file)
+    it attempts to add write permission and then retries.
+
+    If the error is for another reason it re-raises the error.
+
+    Credit : http://www.voidspace.org.uk/downloads/pathutils.py
+    Copyright Michael Foord 2004
+    Released subject to the BSD License
+
+    Usage : ``shutil.rmtree(path, onerror=onerror)``
+    """
+    import stat
+    if not os.access(path, os.W_OK):
+        # Is the error an access error ?
+        os.chmod(path, stat.S_IWUSR)
+        func(path)
+    else:
+        raise
+
+
 @pytest.fixture(scope='module')
 def tempdir():
     """Temporary directory in which all tests will run."""
     tempdir = tempfile.mkdtemp(prefix='uncommitted-test')
     yield tempdir
-    shutil.rmtree(tempdir)
+    shutil.rmtree(tempdir, onerror=handle_remove_read_only)
 
 @pytest.fixture(scope='module')
 def cc(tempdir):
@@ -29,10 +64,17 @@ def cc(tempdir):
         # Let's use tempdir as home folder so we don't touch the user's config
         # files (e.g. ~/.gitconfig):
         if 'env' not in kwargs:
-            kwargs['env'] = {}
+            kwargs['env'] = os.environ.copy()
         kwargs['env']['HOME'] = tempdir
         check_call(*args, **kwargs)
     return helper
+
+
+@pytest.fixture(scope='module')
+def hg_identity():
+    """Sets the ui.username command line option."""
+    return ['--config', 'ui.username=dummy']
+
 
 @pytest.fixture(scope='module')
 def git_identity(cc):
@@ -60,7 +102,7 @@ even_more_maxim = dedent("""\
     """)
 
 @pytest.fixture(scope='module')
-def checkouts(git_identity, tempdir, cc):
+def checkouts(git_identity, hg_identity, tempdir, cc):
     """Clean (i.e. everything committed) and dirty (i.e. with uncommitted
     changes) repositories (Git, Mercurial and Subversion).
     They will be created in a subdirectory of `tempdir`, whose path will be
@@ -75,7 +117,7 @@ def checkouts(git_identity, tempdir, cc):
             # Create the repo:
             if system == 'svn':
                 repo = d + '-repo'
-                repo_url = 'file://' + repo.replace(os.sep, '/')
+                repo_url = 'file:///' + repo.replace(os.sep, '/')
                 cc(['svnadmin', 'create', repo])
                 cc(['svn', 'co', repo_url, d])
             else:
@@ -87,14 +129,20 @@ def checkouts(git_identity, tempdir, cc):
             with open(file_to_edit, 'w') as f:
                 f.write(maxim)
             cc([system, 'add', filename], cwd=d)
-            cc([system, 'commit', '-m', 'Add a maxim'], cwd=d)
+            if system == 'hg':
+                cc([system] + hg_identity + ['commit', '-m', 'Add a maxim'], cwd=d)
+            else:
+                cc([system, 'commit', '-m', 'Add a maxim'], cwd=d)
 
             # Another commit to the master branch:
             if system != 'svn':
                 with open(file_to_edit, 'a') as f:
                     f.write(more_maxim)
                 cc([system, 'add', filename], cwd=d)
-                cc([system, 'commit', '-m', 'Add more maxim'], cwd=d)
+                if system == 'hg':
+                    cc([system] + hg_identity + ['commit', '-m', 'Add more maxim'], cwd=d)
+                else:
+                    cc([system, 'commit', '-m', 'Add more maxim'], cwd=d)
 
             # Make the master branch dirty:
             if state == 'dirty' or state == 'ignore':
@@ -185,7 +233,7 @@ def test_uncommitted(checkouts):
         {path}/svn-ignore - Subversion
          M       {filename}
 
-        """).format(path=checkouts, filename=filename)
+        """.replace('/', os.sep)).format(path=checkouts, filename=filename)
 
     assert actual_output == expected_output
 
@@ -210,7 +258,7 @@ def test_uncommitted_ignore_one(checkouts):
         {path}/svn-ignore - Subversion
          M       {filename}
 
-        """).format(path=checkouts, filename=filename)
+        """.replace('/', os.sep)).format(path=checkouts, filename=filename)
 
     assert actual_output == expected_output
 
@@ -242,7 +290,7 @@ def test_uncommitted_ignore_two_verbose(checkouts):
         {path}/svn-ignore - Subversion
          M       {filename}
 
-        """).format(path=checkouts, filename=filename)
+        """.replace('/', os.sep)).format(path=checkouts, filename=filename)
 
     assert actual_output == expected_output
 
@@ -251,6 +299,8 @@ def test_unpushed(clones):
     changes?"""
     actual_output = run(clones)
 
+    clones, sep = correct_path_on_windows(clones)
+
     # All ahead branches and only them (the checked-out branch is marked with a
     # star):
     expected_output_regex = re.compile(dedent("""\
@@ -258,7 +308,7 @@ def test_unpushed(clones):
           behind-ahead         .* \[ahead 1, behind 1\] Even more maxim
         \* not-behind-ahead     .* \[ahead 1\] Even more maxim
 
-        $""").format(path=clones))
+        $""".replace('/', sep)).format(path=clones))
 
     assert expected_output_regex.match(actual_output) is not None
 
@@ -308,6 +358,8 @@ def test_stash(checkouts, cc):
     finally:
         cc([system, 'stash', 'pop'], cwd=dirty_repo)
 
+    dirty_repo, _ = correct_path_on_windows(dirty_repo)
+
     expected_output_regex = re.compile(dedent("""\
         ^{path} - Git
         stash@\{{0\}}: WIP on master: .* Add more maxim
@@ -339,10 +391,18 @@ def test_follow_symlinks(checkouts):
     try:
         # Especially for this test, create a symlink to `git-dirty` from within
         # `git-clean`:
-        os.symlink(pointed_repo, symlink)
+        if sys.platform == 'win32':
+            call(['mklink', '/J', symlink, pointed_repo],
+                 shell=True)
+        else:
+            os.symlink(pointed_repo, symlink)
+
         actual_output = run(repo_with_symlink, '-L')
     finally:
-        os.remove(symlink)
+        if sys.platform == 'win32':
+            os.system('rmdir "%s"' % symlink)
+        else:
+            os.unlink(symlink)
 
     # Only the pointed dirty repo, as the pointing repo remained clean (the
     # symlink is just an untracked file):
