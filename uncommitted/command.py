@@ -95,6 +95,9 @@ def status_subversion(path, ignore_set, options):
         if line.startswith('Performing') or line[0] in 'X?':
             continue
         status = line[:8]
+        ignored_states = options.ignore_svn_states
+        if ignored_states and status.strip() in ignored_states:
+            continue
         filename = line[8:].split(None, 3)[-1]
         ignore_set.add(os.path.join(path, filename))
         if status.strip():
@@ -148,6 +151,10 @@ def main():
     parser.add_option('-I', dest='ignore_patterns', action='append',
         default=[],
         help='ignore any directory paths that contain the specified string')
+    parser.add_option(
+        '--ignore-svn-states',
+        help='ignore SVN states given as a string of status codes (SVN only)')
+
     (options, args) = parser.parse_args()
 
     if not args:
