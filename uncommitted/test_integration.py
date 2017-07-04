@@ -454,3 +454,49 @@ def test_submodule(repo_with_submodule):
         """).format(path=repo_with_submodule)
 
     assert actual_output == expected_output
+
+@pytest.fixture(scope='module')
+def svn_locked(tempdir, cc):
+    """SVN repo containing a locked file.
+    It will be created in a subdirectory of `tempdir`, whose path will be
+    returned."""
+    locked = os.path.join(tempdir, 'svn' + '-' + 'locked')
+
+    # Create the locally locked repo:
+    repo = locked + '-repo'
+    repo_url = 'file:///' + repo.replace(os.sep, '/')
+    cc(['svnadmin', 'create', repo])
+    cc(['svn', 'co', repo_url, locked])
+
+    file_to_lock = os.path.join(locked, filename)
+
+    # Make the repo contain a locked file:
+    with open(file_to_lock, 'a') as f:
+        f.write(maxim)
+
+    cc(['svn', 'add', file_to_lock],
+       cwd=locked)
+    cc(['svn', 'commit', file_to_lock, '-m', 'add file to be locked'],
+       cwd=locked)
+    cc(['svn', 'lock', file_to_lock, '-m', 'lock file'], cwd=locked)
+
+    return locked
+
+def test_svn_lock_ignored(svn_locked):
+    """Do we omit locked files when `--ignore-svn-states` contains `K`?"""
+    actual_output = run('--ignore-svn-states', 'K', svn_locked)
+
+    # All dirty checkouts and only them:
+    expected_output = ""
+    assert actual_output == expected_output
+
+def test_svn_lock_detected(svn_locked):
+    """Do we detect svn repository having locked state?"""
+    actual_output = run(svn_locked)
+    expected_output = dedent("""\
+            {path} - Subversion
+                  K  {filename}
+
+            """).format(path=svn_locked, filename=filename)
+
+    assert actual_output == expected_output
