@@ -110,7 +110,7 @@ def status_subversion(path, ignore_set, options):
 
     Returns a 2-element tuple:
     * Text lines describing the status of the repository.
-    * Empty sequence of subrepos, since hg does not support them.
+    * Empty sequence of subrepos, since svn does not support them.
     """
     subrepos = ()
     if path in ignore_set:
