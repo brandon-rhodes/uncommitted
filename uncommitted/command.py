@@ -18,6 +18,7 @@ class ErrorCannotLocate(Exception):
     """Signal that we cannot successfully run the locate(1) binary."""
 
 globchar = re.compile(r'([][*?])')
+git_submodule = re.compile(r'.*\s(.*)\s\(.*\)')
 
 def replace_unknown_characters(output):
     return output.decode(errors='replace').splitlines()
@@ -60,12 +61,17 @@ def find_repositories_by_walking(path, followlinks):
     return repos
 
 def status_mercurial(path, ignore_set, options):
-    """Return text lines describing the status of a Mercurial repository."""
+    """Return a pair:
+    - 1st: text lines describing the status of a Mercurial repository,
+    - 2nd: empty sequence."""
+    discovered_repos = ()
     lines = run(['hg', '--config', 'extensions.color=!', 'st'], cwd=path)
-    return [ ' ' + l for l in lines if not l.startswith('?') ]
+    return [ ' ' + l for l in lines if not l.startswith('?') ], discovered_repos
 
 def status_git(path, ignore_set, options):
-    """Return text lines describing the status of a Git repository."""
+    """Return a pair:
+    - 1st: text lines describing the status of a Git repository,
+    - 2nd: paths to this repository's submodules, relative to this repository."""
     # Check whether current branch is dirty:
     lines = [ l for l in run(('git', 'status', '-s', '-b'), cwd=path)
               if (options.untracked or not l.startswith('?')) and not l.startswith('##')]
@@ -82,12 +88,22 @@ def status_git(path, ignore_set, options):
 
     if options.stash:
         lines += [ l for l in run(('git', 'stash', 'list'), cwd=path) ]
-    return lines
+
+    discovered_submodules = []
+    for l in run(('git', 'submodule', 'status'), cwd=path):
+        match = git_submodule.match(l)
+        if match:
+            discovered_submodules.append(match.group(1))
+
+    return lines, discovered_submodules
 
 def status_subversion(path, ignore_set, options):
-    """Return text lines describing the status of a Subversion repository."""
+    """Return a pair:
+    - 1st: text lines describing the status of a Subversion repository,
+    - 2nd: empty sequence."""
+    discovered_repos = ()
     if path in ignore_set:
-        return
+        return None, discovered_repos
     keepers = []
     for line in run(['svn', 'st', '-v'], cwd=path):
         if not line.strip():
@@ -99,7 +115,7 @@ def status_subversion(path, ignore_set, options):
         ignore_set.add(os.path.join(path, filename))
         if status.strip():
             keepers.append(' ' + status + filename)
-    return keepers
+    return keepers, discovered_repos
 
 SYSTEMS = {
     '.git': ('Git', status_git),
@@ -120,7 +136,8 @@ def scan(repos, options):
             continue
 
         vcsname, get_status = SYSTEMS[dotdir]
-        lines = get_status(directory, ignore_set, options)
+        lines, discovered_repos = get_status(directory, ignore_set, options)
+        repos.extend((os.path.join(directory, r), dotdir) for r in discovered_repos)
         if lines is None:  # signal that we should ignore this one
             continue
         if lines or options.verbose:

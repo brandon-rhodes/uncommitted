@@ -196,6 +196,30 @@ def clones(git_identity, tempdir, checkouts, cc):
 
     return clones_dir
 
+@pytest.fixture(scope='module')
+def repo_with_submodule(git_identity, tempdir, checkouts, cc):
+    """Repository with a submodule used to test detection of non-tracking
+    branches in submodules.
+    Will be created in a subdirectory of `tempdir`, whose path will be
+    returned."""
+    # Create a new repository:
+    d = os.path.join(tempdir, 'with-submodules')
+    os.mkdir(d)
+    system = 'git'
+    cc([system, 'init'], cwd=d)
+
+    # Add a remote repo as a submodule:
+    submodule_name = system + '-clean'
+    remote = os.path.join(checkouts, submodule_name)
+    cc([system, 'submodule', 'add', remote], cwd=d)
+    cc([system, 'commit', '-m', 'Initial commit with submodule.'], cwd=d)
+
+    # Create a non-tracking branch in the submodule:
+    submodule_dir = os.path.join(d, submodule_name)
+    cc([system, 'checkout', '-b', 'non-tracking'], cwd=submodule_dir)
+
+    return d
+
 def run(*args):
     """Runs uncommitted with the given arguments, returning stdout."""
     sys.argv[:] = args
@@ -411,5 +435,22 @@ def test_follow_symlinks(checkouts):
          M {filename}
 
         """).format(path=symlink, filename=filename)
+
+    assert actual_output == expected_output
+
+def test_submodule(repo_with_submodule):
+    """Do we inspect submodules?"""
+    actual_output = run(repo_with_submodule, '-n')
+
+    # The repo's `master` and the submodule's `non-tracking` branches aren't
+    # tracking any remote branch, but the submodule's `master` is:
+    expected_output = dedent("""\
+        {path} - Git
+        [master]
+
+        {path}/git-clean - Git
+        [non-tracking]
+
+        """).format(path=repo_with_submodule)
 
     assert actual_output == expected_output
