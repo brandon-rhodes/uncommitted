@@ -68,6 +68,16 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
+**1.9** (2017 Jul 4)
+
+- Sub-repositories in git are now scanned (`AurelienLourot`_)
+- Add ``-s`` / ``--stash`` to detect git stashes (`AurelienLourot`_)
+- Add ``--ignore-svn-states`` to ignore specific states (`fleimgruber`_)
+- Test suite now runs under Windows (`fleimgruber`_)
+
+.. _AurelienLourot: https://github.com/AurelienLourot
+.. _fleimgruber: https://github.com/fleimgruber
+
 **1.8** (2016 Oct 30)
 
 - Add ``-I`` to ignore repositories matching a substring.
@@ -115,4 +125,4 @@ Changelog
 .. _Eapen: http://eapen.in
 
 """
-__version__ = '1.8'
+__version__ = '1.9'
