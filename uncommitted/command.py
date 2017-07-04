@@ -18,7 +18,7 @@ class ErrorCannotLocate(Exception):
     """Signal that we cannot successfully run the locate(1) binary."""
 
 globchar = re.compile(r'([][*?])')
-git_submodule = re.compile(r'.*\s(.*)\s\(.*\)')
+git_submodule = re.compile(r'\s(\S*)\s\(.*\)')
 
 def replace_unknown_characters(output):
     return output.decode(errors='replace').splitlines()
@@ -49,8 +49,8 @@ def find_repositories_with_locate(path):
         paths = check_output(command).strip('\0').split('\0')
     except CalledProcessError:
         return []
-    return [ os.path.split(p) for p in paths
-             if not os.path.islink(p) and os.path.isdir(p) ]
+    return [os.path.split(p) for p in paths
+            if not os.path.islink(p) and os.path.isdir(p)]
 
 def find_repositories_by_walking(path, followlinks):
     """Walk a tree and return a sequence of (directory, dotdir) pairs."""
@@ -61,49 +61,60 @@ def find_repositories_by_walking(path, followlinks):
     return repos
 
 def status_mercurial(path, ignore_set, options):
-    """Return a pair:
-    - 1st: text lines describing the status of a Mercurial repository,
-    - 2nd: empty sequence."""
-    discovered_repos = ()
+    """Run hg status.
+
+    Returns a 2-element tuple:
+    * Text lines describing the status of the repository.
+    * Empty sequence of subrepos, since hg does not support them.
+    """
     lines = run(['hg', '--config', 'extensions.color=!', 'st'], cwd=path)
-    return [ ' ' + l for l in lines if not l.startswith('?') ], discovered_repos
+    subrepos = ()
+    return [' ' + l for l in lines if not l.startswith('?')], subrepos
 
 def status_git(path, ignore_set, options):
-    """Return a pair:
-    - 1st: text lines describing the status of a Git repository,
-    - 2nd: paths to this repository's submodules, relative to this repository."""
+    """Run git status.
+
+    Returns a 2-element tuple:
+    * Text lines describing the status of the repository.
+    * List of subrepository paths, relative to the repository itself.
+    """
     # Check whether current branch is dirty:
-    lines = [ l for l in run(('git', 'status', '-s', '-b'), cwd=path)
-              if (options.untracked or not l.startswith('?')) and not l.startswith('##')]
+    lines = [l for l in run(('git', 'status', '-s', '-b'), cwd=path)
+             if (options.untracked or not l.startswith('?'))
+             and not l.startswith('##')]
 
     # Check all branches for unpushed commits:
-    lines += [ l for l in run(('git', 'branch', '-v'), cwd=path)
-               if (' [ahead ' in l)]
+    lines += [l for l in run(('git', 'branch', '-v'), cwd=path)
+              if (' [ahead ' in l)]
 
     # Check for non-tracking branches:
     if options.non_tracking:
-        lines += [ l for l in run(('git', 'for-each-ref', '--format=[%(refname:short)]%(upstream)',
+        lines += [l for l in run(('git', 'for-each-ref',
+                                  '--format=[%(refname:short)]%(upstream)',
                                    'refs/heads'), cwd=path)
-                   if l.endswith(']')]
+                  if l.endswith(']')]
 
     if options.stash:
-        lines += [ l for l in run(('git', 'stash', 'list'), cwd=path) ]
+        lines += [l for l in run(('git', 'stash', 'list'), cwd=path)]
 
     discovered_submodules = []
     for l in run(('git', 'submodule', 'status'), cwd=path):
-        match = git_submodule.match(l)
+        match = git_submodule.search(l)
         if match:
             discovered_submodules.append(match.group(1))
 
     return lines, discovered_submodules
 
 def status_subversion(path, ignore_set, options):
-    """Return a pair:
-    - 1st: text lines describing the status of a Subversion repository,
-    - 2nd: empty sequence."""
-    discovered_repos = ()
+    """Run svn status.
+
+    Returns a 2-element tuple:
+    * Text lines describing the status of the repository.
+    * Empty sequence of subrepos, since hg does not support them.
+    """
+    subrepos = ()
     if path in ignore_set:
-        return None, discovered_repos
+        return None, subrepos
     keepers = []
     for line in run(['svn', 'st', '-v'], cwd=path):
         if not line.strip():
@@ -115,7 +126,7 @@ def status_subversion(path, ignore_set, options):
         ignore_set.add(os.path.join(path, filename))
         if status.strip():
             keepers.append(' ' + status + filename)
-    return keepers, discovered_repos
+    return keepers, subrepos
 
 SYSTEMS = {
     '.git': ('Git', status_git),
@@ -127,7 +138,9 @@ DOTDIRS = set(SYSTEMS)
 def scan(repos, options):
     """Given a repository list [(path, vcsname), ...], scan each of them."""
     ignore_set = set()
-    for directory, dotdir in repos:
+    repos = repos[::-1]  # Create a queue we can push and pop from
+    while repos:
+        directory, dotdir = repos.pop()
         ignore_this = any(pat in directory for pat in options.ignore_patterns)
         if ignore_this:
             if options.verbose:
@@ -136,8 +149,13 @@ def scan(repos, options):
             continue
 
         vcsname, get_status = SYSTEMS[dotdir]
-        lines, discovered_repos = get_status(directory, ignore_set, options)
-        repos.extend((os.path.join(directory, r), dotdir) for r in discovered_repos)
+        lines, subrepos = get_status(directory, ignore_set, options)
+
+        # We want to tackle subrepos immediately after their repository,
+        # so we put them at the front of the queue.
+        subrepos = [(os.path.join(directory, r), dotdir) for r in subrepos]
+        repos.extend(reversed(subrepos))
+
         if lines is None:  # signal that we should ignore this one
             continue
         if lines or options.verbose:
