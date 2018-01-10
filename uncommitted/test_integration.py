@@ -211,7 +211,7 @@ def repo_with_submodule(git_identity, tempdir, checkouts, cc):
     # Add a remote repo as a submodule:
     submodule_name = system + '-clean'
     remote = os.path.join(checkouts, submodule_name)
-    cc([system, 'submodule', 'add', remote], cwd=d)
+    cc([system, 'submodule', 'add', '-f', remote, submodule_name], cwd=d)
     cc([system, 'commit', '-m', 'Initial commit with submodule.'], cwd=d)
 
     # Create a non-tracking branch in the submodule:
@@ -451,7 +451,7 @@ def test_submodule(repo_with_submodule):
         {path}/git-clean - Git
         [non-tracking]
 
-        """).format(path=repo_with_submodule)
+        """).replace('/', os.sep).format(path=repo_with_submodule)
 
     assert actual_output == expected_output
 
