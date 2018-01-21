@@ -17,36 +17,39 @@ USAGE = '''usage: %prog [options] path [path...]
 class ErrorCannotLocate(Exception):
     """Signal that we cannot successfully run the locate(1) binary."""
 
-globchar = re.compile(r'([][*?])')
-git_submodule = re.compile(r'\s(\S*)\s\(.*\)')
+globchar = re.compile(br'([][*?])')
+git_submodule = re.compile(br'\s(\S*)\s\(.*\)')
+linesep = os.linesep.encode('ascii')
 
-def replace_unknown_characters(output):
-    return output.decode(errors='replace').splitlines()
+def output(thing):
+    """Replacement for print() that outputs bytes."""
+    os.write(1, thing + linesep)
 
 def run(command, **kw):
     """Run `command`, catch any exception, and return lines of output."""
     try:
-        output = check_output(command, **kw)
+        # In Python 3, iterating over bytes yield integers, so we call
+        # `splitlines()` to force Python 3 to give us lines instead.
+        return check_output(command, **kw).splitlines()
     except CalledProcessError:
-        return []
-    return replace_unknown_characters(output)
+        return ()
 
 def escape(s):
     """Escape the characters special to locate(1) globbing."""
-    return globchar.sub(r'\\\1', s)
+    return globchar.sub(br'\\\1', s)
 
 def find_repositories_with_locate(path):
     """Use locate to return a sequence of (directory, dotdir) pairs."""
-    command = ['locate', '-0']
+    command = [b'locate', b'-0']
     for dotdir in DOTDIRS:
         # Escaping the slash (using '\/' rather than '/') is an
         # important signal to locate(1) that these glob patterns are
         # supposed to match the full path, so that things like
         # '.hgignore' files do not show up in the result.
-        command.append(r'%s\/%s' % (escape(path), escape(dotdir)))
-        command.append(r'%s\/*/%s' % (escape(path), escape(dotdir)))
+        command.append(br'%s\/%s' % (escape(path), escape(dotdir)))
+        command.append(br'%s\/*/%s' % (escape(path), escape(dotdir)))
     try:
-        paths = check_output(command).strip('\0').split('\0')
+        paths = check_output(command).strip(b'\0').split(b'\0')
     except CalledProcessError:
         return []
     return [os.path.split(p) for p in paths
@@ -69,7 +72,7 @@ def status_mercurial(path, ignore_set, options):
     """
     lines = run(['hg', '--config', 'extensions.color=!', 'st'], cwd=path)
     subrepos = ()
-    return [' ' + l for l in lines if not l.startswith('?')], subrepos
+    return [b' ' + l for l in lines if not l.startswith(b'?')], subrepos
 
 def status_git(path, ignore_set, options):
     """Run git status.
@@ -80,19 +83,19 @@ def status_git(path, ignore_set, options):
     """
     # Check whether current branch is dirty:
     lines = [l for l in run(('git', 'status', '-s', '-b'), cwd=path)
-             if (options.untracked or not l.startswith('?'))
-             and not l.startswith('##')]
+             if (options.untracked or not l.startswith(b'?'))
+             and not l.startswith(b'##')]
 
     # Check all branches for unpushed commits:
     lines += [l for l in run(('git', 'branch', '-v'), cwd=path)
-              if (' [ahead ' in l)]
+              if (b' [ahead ' in l)]
 
     # Check for non-tracking branches:
     if options.non_tracking:
         lines += [l for l in run(('git', 'for-each-ref',
                                   '--format=[%(refname:short)]%(upstream)',
                                    'refs/heads'), cwd=path)
-                  if l.endswith(']')]
+                  if l.endswith(b']')]
 
     if options.stash:
         lines += [l for l in run(('git', 'stash', 'list'), cwd=path)]
@@ -119,7 +122,7 @@ def status_subversion(path, ignore_set, options):
     for line in run(['svn', 'st', '-v'], cwd=path):
         if not line.strip():
             continue
-        if line.startswith('Performing') or line[0] in 'X?':
+        if line.startswith(b'Performing') or line[0] in b'X?':
             continue
         status = line[:8]
         ignored_states = options.ignore_svn_states
@@ -128,13 +131,13 @@ def status_subversion(path, ignore_set, options):
         filename = line[8:].split(None, 3)[-1]
         ignore_set.add(os.path.join(path, filename))
         if status.strip():
-            keepers.append(' ' + status + filename)
+            keepers.append(b' ' + status + filename)
     return keepers, subrepos
 
 SYSTEMS = {
-    '.git': ('Git', status_git),
-    '.hg': ('Mercurial', status_mercurial),
-    '.svn': ('Subversion', status_subversion),
+    b'.git': (b'Git', status_git),
+    b'.hg': (b'Mercurial', status_mercurial),
+    b'.svn': (b'Subversion', status_subversion),
     }
 DOTDIRS = set(SYSTEMS)
 
@@ -147,8 +150,8 @@ def scan(repos, options):
         ignore_this = any(pat in directory for pat in options.ignore_patterns)
         if ignore_this:
             if options.verbose:
-                print('Ignoring repo: {}'.format(directory))
-                print('')
+                output(b'Ignoring repo: %s' % directory)
+                output(b'')
             continue
 
         vcsname, get_status = SYSTEMS[dotdir]
@@ -162,10 +165,10 @@ def scan(repos, options):
         if lines is None:  # signal that we should ignore this one
             continue
         if lines or options.verbose:
-            print('{} - {}'.format(directory, vcsname))
+            output(b'%s - %s' % (directory, vcsname))
             for line in lines:
-                print(line)
-            print('')
+                output(line)
+            output(b'')
 
 def main():
     parser = OptionParser(usage=USAGE)
@@ -206,6 +209,16 @@ def main():
     else:
         find_repos = partial(find_repositories_by_walking,
                              followlinks=options.follow_symlinks)
+
+    if sys.version_info[0] >= 3:
+        # Turn string arguments back into their original bytes.
+        fix = os.fsencode
+        args = [fix(s) for s in args]
+        options.ignore_patterns = [fix(s) for s in options.ignore_patterns]
+        if options.ignore_svn_states is not None:
+            options.ignore_svn_states = [
+                fix(s) for s in options.ignore_svn_states
+            ]
 
     repos = set()
 

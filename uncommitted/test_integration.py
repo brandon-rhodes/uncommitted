@@ -4,17 +4,12 @@ import os
 import re
 import pytest
 import shutil
+import stat
 import sys
 import tempfile
+import textwrap
 import uncommitted.command
 from subprocess import check_call, call
-from textwrap import dedent
-
-
-if sys.version_info.major > 2:
-    from io import StringIO
-else:
-    from StringIO import StringIO
 
 
 def correct_path_on_windows(path):
@@ -25,6 +20,12 @@ def correct_path_on_windows(path):
         sep = os.sep
     return path, sep
 
+
+def dedent(b, **substitutions):
+    b = textwrap.dedent(b).replace('/', os.sep).encode('utf-8')
+    for name, value in substitutions.items():
+        b = b.replace(b'{%s}' % name.encode('utf-8'), value.encode('utf-8'))
+    return b
 
 def handle_remove_read_only(func, path, exc_info):
     """
@@ -41,7 +42,6 @@ def handle_remove_read_only(func, path, exc_info):
 
     Usage : ``shutil.rmtree(path, onerror=onerror)``
     """
-    import stat
     if not os.access(path, os.W_OK):
         # Is the error an access error ?
         os.chmod(path, stat.S_IWUSR)
@@ -126,7 +126,7 @@ def checkouts(git_identity, hg_identity, tempdir, cc):
 
             # Initial commit to the master branch:
             file_to_edit = os.path.join(d, filename)
-            with open(file_to_edit, 'w') as f:
+            with open(file_to_edit, 'wb') as f:
                 f.write(maxim)
             cc([system, 'add', filename], cwd=d)
             if system == 'hg':
@@ -136,7 +136,7 @@ def checkouts(git_identity, hg_identity, tempdir, cc):
 
             # Another commit to the master branch:
             if system != 'svn':
-                with open(file_to_edit, 'a') as f:
+                with open(file_to_edit, 'ab') as f:
                     f.write(more_maxim)
                 cc([system, 'add', filename], cwd=d)
                 if system == 'hg':
@@ -146,7 +146,7 @@ def checkouts(git_identity, hg_identity, tempdir, cc):
 
             # Make the master branch dirty:
             if state == 'dirty' or state == 'ignore':
-                with open(file_to_edit, 'a') as f:
+                with open(file_to_edit, 'ab') as f:
                     f.write(even_more_maxim)
 
     return checkouts_dir
@@ -186,7 +186,7 @@ def clones(git_identity, tempdir, checkouts, cc):
             if ahead:
                 file_to_edit = os.path.join(complex_clone_dir,
                                             filename)
-                with open(file_to_edit, 'a') as f:
+                with open(file_to_edit, 'ab') as f:
                     f.write(even_more_maxim)
                 cc([system, 'add', filename], cwd=complex_clone_dir)
                 cc([system, 'commit', '-m', 'Even more maxim'],
@@ -224,14 +224,15 @@ def run(*args):
     """Runs uncommitted with the given arguments, returning stdout."""
     sys.argv[:] = args
     sys.argv.insert(0, 'uncommitted')
-    io = StringIO()
-    stdout = sys.stdout
+    original = uncommitted.command.output
+    outputs = []
     try:
-        sys.stdout = io
+        uncommitted.command.output = outputs.append
         uncommitted.command.main()
     finally:
-        sys.stdout = stdout
-    return io.getvalue()
+        uncommitted.command.output = original
+    outputs.append(b'')         # so join() will add a terminal linefeed
+    return b'\n'.join(outputs)
 
 def test_uncommitted(checkouts):
     """Do we detect repositories having uncommitted changes?"""
@@ -257,7 +258,7 @@ def test_uncommitted(checkouts):
         {path}/svn-ignore - Subversion
          M       {filename}
 
-        """.replace('/', os.sep)).format(path=checkouts, filename=filename)
+        """, path=checkouts, filename=filename)
 
     assert actual_output == expected_output
 
@@ -282,7 +283,7 @@ def test_uncommitted_ignore_one(checkouts):
         {path}/svn-ignore - Subversion
          M       {filename}
 
-        """.replace('/', os.sep)).format(path=checkouts, filename=filename)
+        """, path=checkouts, filename=filename)
 
     assert actual_output == expected_output
 
@@ -314,7 +315,7 @@ def test_uncommitted_ignore_two_verbose(checkouts):
         {path}/svn-ignore - Subversion
          M       {filename}
 
-        """.replace('/', os.sep)).format(path=checkouts, filename=filename)
+        """, path=checkouts, filename=filename)
 
     assert actual_output == expected_output
 
@@ -332,7 +333,7 @@ def test_unpushed(clones):
           behind-ahead         .* \[ahead 1, behind 1\] Even more maxim
         \* not-behind-ahead     .* \[ahead 1\] Even more maxim
 
-        $""".replace('/', sep)).format(path=clones))
+        $""", path=clones))
 
     assert expected_output_regex.match(actual_output) is not None
 
@@ -346,7 +347,7 @@ def test_non_tracking(checkouts):
         {path} - Git
         [master]
 
-        """).format(path=clean_git_repo)
+        """, path=clean_git_repo)
 
     assert actual_output == expected_output
 
@@ -358,7 +359,7 @@ def test_untracked(checkouts):
     new_file_path = os.path.join(repo_with_new_file, new_filename)
     try:
         # Especially for this test, create a new file:
-        open(new_file_path, 'a').close()
+        open(new_file_path, 'ab').close()
         actual_output = run(repo_with_new_file, '-u')
     finally:
         os.remove(new_file_path)
@@ -367,7 +368,7 @@ def test_untracked(checkouts):
         {path} - Git
         ?? {filename}
 
-        """).format(path=repo_with_new_file, filename=new_filename)
+        """, path=repo_with_new_file, filename=new_filename)
 
     assert actual_output == expected_output
 
@@ -386,10 +387,10 @@ def test_stash(checkouts, cc):
 
     expected_output_regex = re.compile(dedent("""\
         ^{path} - Git
-        stash@\{{0\}}: WIP on master: .* Add more maxim
+        stash@\{0\}: WIP on master: .* Add more maxim
 
-        $""").format(path=dirty_repo))
-
+        $""", path=dirty_repo))
+    print(actual_output)
     assert expected_output_regex.match(actual_output) is not None
 
 def test_verbose(checkouts):
@@ -402,7 +403,7 @@ def test_verbose(checkouts):
     expected_output = dedent("""\
         {path} - Git
 
-        """).format(path=clean_repo)
+        """, path=clean_repo)
 
     assert actual_output == expected_output
 
@@ -434,7 +435,7 @@ def test_follow_symlinks(checkouts):
         {path} - Git
          M {filename}
 
-        """).format(path=symlink, filename=filename)
+        """, path=symlink, filename=filename)
 
     assert actual_output == expected_output
 
@@ -451,7 +452,7 @@ def test_submodule(repo_with_submodule):
         {path}/git-clean - Git
         [non-tracking]
 
-        """).replace('/', os.sep).format(path=repo_with_submodule)
+        """, path=repo_with_submodule)
 
     assert actual_output == expected_output
 
@@ -471,7 +472,7 @@ def svn_locked(tempdir, cc):
     file_to_lock = os.path.join(locked, filename)
 
     # Make the repo contain a locked file:
-    with open(file_to_lock, 'a') as f:
+    with open(file_to_lock, 'ab') as f:
         f.write(maxim)
 
     cc(['svn', 'add', file_to_lock],
@@ -487,7 +488,7 @@ def test_svn_lock_ignored(svn_locked):
     actual_output = run('--ignore-svn-states', 'K', svn_locked)
 
     # All dirty checkouts and only them:
-    expected_output = ""
+    expected_output = b""
     assert actual_output == expected_output
 
 def test_svn_lock_detected(svn_locked):
@@ -497,6 +498,6 @@ def test_svn_lock_detected(svn_locked):
             {path} - Subversion
                   K  {filename}
 
-            """).format(path=svn_locked, filename=filename)
+            """, path=svn_locked, filename=filename)
 
     assert actual_output == expected_output
