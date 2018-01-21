@@ -70,7 +70,7 @@ Changelog
 
 **2.0** (2018 Jan 21)
 
-- Fix Python 3 error with ``-l`` / ``--locate`` by switching all
+- Fix Python 3 error with ``-l`` / ``--locate`` by switching all
   internal processing to use bytes instead of strings.
 
 **1.9** (2017 Jul 4)
