@@ -68,6 +68,11 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
+**2.0** (2018 Jan 21)
+
+- Fix Python 3 error with ``-l`` / ``--locate`` by switching all
+  internal processing to use bytes instead of strings.
+
 **1.9** (2017 Jul 4)
 
 - Sub-repositories in git are now scanned (`AurelienLourot`_)
@@ -125,4 +130,4 @@ Changelog
 .. _Eapen: http://eapen.in
 
 """
-__version__ = '1.9'
+__version__ = '2.0'
