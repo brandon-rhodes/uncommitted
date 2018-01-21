@@ -68,7 +68,7 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
-**2.0** (2018 Jan 21)
+**2.0.1** (2018 Jan 21)
 
 - Fix Python 3 error with ``-l`` / ``--locate`` by switching all
   internal processing to use bytes instead of strings.
@@ -130,4 +130,4 @@ Changelog
 .. _Eapen: http://eapen.in
 
 """
-__version__ = '2.0'
+__version__ = '2.0.1'
