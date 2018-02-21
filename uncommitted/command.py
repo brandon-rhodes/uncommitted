@@ -33,6 +33,10 @@ def run(command, **kw):
         return check_output(command, **kw).splitlines()
     except CalledProcessError:
         return ()
+    except FileNotFoundError:
+        print("The {} binary was not found. Skipping directory {}.\n"
+              .format(command[0], kw['cwd'].decode("UTF-8")))
+        return ()
 
 def escape(s):
     """Escape the characters special to locate(1) globbing."""
