@@ -68,6 +68,15 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
+**2.1** (2018 Feb 22)
+
+- When running in follow-symlinks mode, uncommitted is now careful to
+  avoid both symlink loops and visiting the same directories twice.
+
+- Now prints a warning and keeps running (instead of crashing) if a
+  repository is present for which the corresponding version control
+  command line is not installed.
+
 **2.0.1** (2018 Jan 21)
 
 - Fix Python 3 error with ``-l`` / ``--locate`` by switching all
@@ -130,4 +139,4 @@ Changelog
 .. _Eapen: http://eapen.in
 
 """
-__version__ = '2.0.1'
+__version__ = '2.1'
