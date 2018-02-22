@@ -3,7 +3,6 @@
 import os
 import re
 import sys
-from functools import partial
 from optparse import OptionParser
 from subprocess import CalledProcessError, check_output
 
@@ -59,10 +58,31 @@ def find_repositories_with_locate(path):
     return [os.path.split(p) for p in paths
             if not os.path.islink(p) and os.path.isdir(p)]
 
-def find_repositories_by_walking(path, followlinks):
+def find_repositories_by_walking_without_following_symlinks(path):
     """Walk a tree and return a sequence of (directory, dotdir) pairs."""
     repos = []
-    for dirpath, dirnames, filenames in os.walk(path, followlinks=followlinks):
+    for dirpath, dirnames, filenames in os.walk(path, followlinks=False):
+        for dotdir in set(dirnames) & DOTDIRS:
+            repos.append((dirpath, dotdir))
+    return repos
+
+def find_repositories_by_walking_and_following_symlinks(path):
+    """Walk a tree and return a sequence of (directory, dotdir) pairs."""
+    repos = []
+
+    # This is for detecting symlink loops and escaping them. This is similar to
+    # http://stackoverflow.com/questions/36977259/avoiding-infinite-recursion-with-os-walk/36977656#36977656
+    def inode(path):
+        stats = os.stat(path)
+        return stats.st_dev, stats.st_ino
+    seen_inodes = {inode(path)}
+
+    for dirpath, dirnames, filenames in os.walk(path, followlinks=True):
+        inodes = [inode(os.path.join(dirpath, p)) for p in dirnames]
+        dirnames[:] = [p for p, i in zip(dirnames, inodes)
+                       if not i in seen_inodes]
+        seen_inodes.update(inodes)
+
         for dotdir in set(dirnames) & DOTDIRS:
             repos.append((dirpath, dotdir))
     return repos
@@ -210,9 +230,10 @@ def main():
 
     if options.use_locate:
         find_repos = find_repositories_with_locate
+    elif options.follow_symlinks:
+        find_repos = find_repositories_by_walking_and_following_symlinks
     else:
-        find_repos = partial(find_repositories_by_walking,
-                             followlinks=options.follow_symlinks)
+        find_repos = find_repositories_by_walking_without_following_symlinks
 
     if sys.version_info[0] >= 3:
         # Turn string arguments back into their original bytes.

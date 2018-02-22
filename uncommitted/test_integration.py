@@ -501,3 +501,23 @@ def test_svn_lock_detected(svn_locked):
             """, path=svn_locked, filename=filename)
 
     assert actual_output == expected_output
+
+def test_symlink_loop(checkouts):
+    """Do we detect symlink loops and stop walking them gracefully?"""
+    system = 'git'
+    repo_with_symlink = os.path.join(checkouts, system + '-clean')
+    symlink = os.path.join(repo_with_symlink, 'symlink')
+    try:
+        # Especially for this test, create a symlink loop:
+        os.symlink(repo_with_symlink, symlink)
+        actual_output = run(repo_with_symlink, '-L', '--verbose')
+    finally:
+        os.remove(symlink)
+
+    # The repo should appear only once (not 30+ times):
+    expected_output = dedent("""\
+        {path} - Git
+
+        """, path=repo_with_symlink)
+
+    assert actual_output == expected_output
