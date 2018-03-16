@@ -329,11 +329,11 @@ def test_unpushed(clones):
     # All ahead branches and only them (the checked-out branch is marked with a
     # star):
     expected_output_regex = re.compile(dedent("""\
-        ^{path}/git-complex - Git
+        ^{path}{sep}git-complex - Git
           behind-ahead         .* \[ahead 1, behind 1\] Even more maxim
         \* not-behind-ahead     .* \[ahead 1\] Even more maxim
 
-        $""", path=clones))
+        $""", path=clones, sep=sep))
 
     assert expected_output_regex.match(actual_output) is not None
 
@@ -424,10 +424,7 @@ def test_follow_symlinks(checkouts):
 
         actual_output = run(repo_with_symlink, '-L')
     finally:
-        if sys.platform == 'win32':
-            os.system('rmdir "%s"' % symlink)
-        else:
-            os.unlink(symlink)
+        os.unlink(symlink)
 
     # Only the pointed dirty repo, as the pointing repo remained clean (the
     # symlink is just an untracked file):
@@ -509,10 +506,15 @@ def test_symlink_loop(checkouts):
     symlink = os.path.join(repo_with_symlink, 'symlink')
     try:
         # Especially for this test, create a symlink loop:
-        os.symlink(repo_with_symlink, symlink)
+        if sys.platform == 'win32':
+            call(['mklink', '/J', symlink, repo_with_symlink],
+                 shell=True)
+        else:
+            os.symlink(repo_with_symlink, symlink)
+
         actual_output = run(repo_with_symlink, '-L', '--verbose')
     finally:
-        os.remove(symlink)
+        os.unlink(symlink)
 
     # The repo should appear only once (not 30+ times):
     expected_output = dedent("""\
