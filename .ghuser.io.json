@@ -1,5 +1,0 @@
-{
-  "_comment": "Repo metadata for ghuser.io. See https://github.com/AurelienLourot/ghuser.io/blob/master/docs/repo-settings.md",
-  "avatar_url": "https://rawgit.com/webdog/octicons-png/master/black/git-compare.png",
-  "techs": ["Git", "Subversion", "Mercurial", "Travis CI"]
-}
