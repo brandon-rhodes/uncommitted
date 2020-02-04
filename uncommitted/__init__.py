@@ -68,6 +68,10 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
+**2.2** (2020 Feb 4)
+
+- Improved Windows compatibility, thanks to Fabio Leimgruber!
+
 **2.1** (2018 Feb 22)
 
 - When running in follow-symlinks mode, uncommitted is now careful to
@@ -139,4 +143,4 @@ Changelog
 .. _Eapen: http://eapen.in
 
 """
-__version__ = '2.1'
+__version__ = '2.2'
