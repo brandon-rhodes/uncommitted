@@ -209,8 +209,8 @@ def repo_with_submodule(git_identity, tempdir, checkouts, cc):
     cc([system, 'init'], cwd=d)
 
     # Add a remote repo as a submodule:
-    submodule_name = system + '-clean'
-    remote = os.path.join(checkouts, submodule_name)
+    submodule_name = system + ' (submodule)'
+    remote = os.path.join(checkouts, system + '-clean')
     cc([system, 'submodule', 'add', '-f', remote, submodule_name], cwd=d)
     cc([system, 'commit', '-m', 'Initial commit with submodule.'], cwd=d)
 
@@ -446,7 +446,7 @@ def test_submodule(repo_with_submodule):
         {path} - Git
         [master]
 
-        {path}/git-clean - Git
+        {path}/git (submodule) - Git
         [non-tracking]
 
         """, path=repo_with_submodule)

@@ -17,7 +17,7 @@ class ErrorCannotLocate(Exception):
     """Signal that we cannot successfully run the locate(1) binary."""
 
 globchar = re.compile(br'([][*?])')
-git_submodule = re.compile(br'\s(\S*)\s\(.*\)')
+git_submodule = re.compile(br'^.\S+\s(.*)\s\(.*?\)$')
 linesep = os.linesep.encode('ascii')
 
 def output(thing):
