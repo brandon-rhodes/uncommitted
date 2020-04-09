@@ -208,7 +208,9 @@ def repo_with_submodule(git_identity, tempdir, checkouts, cc):
     system = 'git'
     cc([system, 'init'], cwd=d)
 
-    # Add a remote repo as a submodule:
+    # Add a remote repo as a submodule, with parentheses in the name -
+    # an edge case that presents a special challenge, and verifies that
+    # our regular expression is tight and specific:
     submodule_name = system + ' (submodule)'
     remote = os.path.join(checkouts, system + '-clean')
     cc([system, 'submodule', 'add', '-f', remote, submodule_name], cwd=d)
