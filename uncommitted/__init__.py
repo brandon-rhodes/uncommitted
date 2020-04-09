@@ -70,7 +70,7 @@ Changelog
 
 **2.3** (2020 Apr 9)
 
-- Bugfix: the regular expression that matches the name of a git
+- *Bugfix:* the regular expression that matches the name of a git
   submodule would get confused if the submodule's directory name itself
   had parens in it.
 
