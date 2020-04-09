@@ -68,6 +68,12 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
+**2.3** (2020 Apr 9)
+
+- Bugfix: the regular expression that matches the name of a git
+  submodule would get confused if the submodule's directory name itself
+  had parens in it.
+
 **2.2** (2020 Feb 4)
 
 - Improved Windows compatibility, thanks to Fabio Leimgruber!
@@ -143,4 +149,4 @@ Changelog
 .. _Eapen: http://eapen.in
 
 """
-__version__ = '2.2'
+__version__ = '2.3'
