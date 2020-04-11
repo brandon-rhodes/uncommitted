@@ -197,7 +197,7 @@ def clones(git_identity, tempdir, checkouts, cc):
     return clones_dir
 
 @pytest.fixture(scope='module')
-def repo_with_submodule(git_identity, tempdir, checkouts, cc):
+def repo_with_submodules(git_identity, tempdir, checkouts, cc):
     """Repository with a submodule used to test detection of non-tracking
     branches in submodules.
     Will be created in a subdirectory of `tempdir`, whose path will be
@@ -208,17 +208,17 @@ def repo_with_submodule(git_identity, tempdir, checkouts, cc):
     system = 'git'
     cc([system, 'init'], cwd=d)
 
-    # Add a remote repo as a submodule, with parentheses in the name -
-    # an edge case that presents a special challenge, and verifies that
-    # our regular expression is tight and specific:
-    submodule_name = system + ' (submodule)'
-    remote = os.path.join(checkouts, system + '-clean')
-    cc([system, 'submodule', 'add', '-f', remote, submodule_name], cwd=d)
-    cc([system, 'commit', '-m', 'Initial commit with submodule.'], cwd=d)
+    # Add various submodules that will challenge our ability to parse
+    # the submodule directory names out of git's output.
+    for suffix in ' (parens)', ' (open paren', ' close paren)':
+        submodule_name = system + suffix
+        remote = os.path.join(checkouts, system + '-clean')
+        cc([system, 'submodule', 'add', '-f', remote, submodule_name], cwd=d)
+        cc([system, 'commit', '-m', 'Initial commit with submodule.'], cwd=d)
 
-    # Create a non-tracking branch in the submodule:
-    submodule_dir = os.path.join(d, submodule_name)
-    cc([system, 'checkout', '-b', 'non-tracking'], cwd=submodule_dir)
+        # Create a non-tracking branch in the submodule:
+        submodule_dir = os.path.join(d, submodule_name)
+        cc([system, 'checkout', '-b', 'non-tracking'], cwd=submodule_dir)
 
     return d
 
@@ -438,20 +438,26 @@ def test_follow_symlinks(checkouts):
 
     assert actual_output == expected_output
 
-def test_submodule(repo_with_submodule):
+def test_submodules(repo_with_submodules):
     """Do we inspect submodules?"""
-    actual_output = run(repo_with_submodule, '-n')
+    actual_output = run(repo_with_submodules, '-n')
 
     # The repo's `master` and the submodule's `non-tracking` branches aren't
-    # tracking any remote branch, but the submodule's `master` is:
+    # tracking any remote branch, but the submodule masters are:
     expected_output = dedent("""\
         {path} - Git
         [master]
 
-        {path}/git (submodule) - Git
+        {path}/git (open paren - Git
         [non-tracking]
 
-        """, path=repo_with_submodule)
+        {path}/git (parens) - Git
+        [non-tracking]
+
+        {path}/git close paren) - Git
+        [non-tracking]
+
+        """, path=repo_with_submodules)
 
     assert actual_output == expected_output
 
