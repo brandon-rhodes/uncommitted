@@ -68,7 +68,7 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
-**2.3** (2020 Apr 9)
+**2.3** (2020 May 14)
 
 - *Bugfix:* the regular expression that matches the name of a git
   submodule would get confused if the submodule's directory name itself
