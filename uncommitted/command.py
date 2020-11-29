@@ -13,6 +13,9 @@ USAGE = '''usage: %prog [options] path [path...]
   uncommitted or unpushed changes are printed to standard out, along
   with the status of the files inside.'''
 
+class ErrorCommandMissing(Exception):
+    """Signal that we cannot successfully run a version control binary."""
+
 class ErrorCannotLocate(Exception):
     """Signal that we cannot successfully run the locate(1) binary."""
 
@@ -24,24 +27,19 @@ def output(thing):
     """Replacement for print() that outputs bytes."""
     os.write(1, thing + linesep)
 
-def run(command, **kw):
+def run(command, cwd):
     """Run `command`, catch any exception, and return lines of output."""
     # Windows low-level subprocess API wants str for current working
     # directory.
-    if sys.platform == 'win32':
-        _cwd = kw.get('cwd', None)
-        if _cwd is not None:
-            kw['cwd'] = _cwd.decode()
+    fixed_cwd = cwd.decode() if (sys.platform == 'win32') else cwd
     try:
         # In Python 3, iterating over bytes yield integers, so we call
         # `splitlines()` to force Python 3 to give us lines instead.
-        return check_output(command, **kw).splitlines()
+        return check_output(command, cwd=fixed_cwd).splitlines()
     except CalledProcessError:
         return ()
-    except FileNotFoundError:
-        print("The {} binary was not found. Skipping directory {}.\n"
-              .format(command[0], kw['cwd'].decode("UTF-8")))
-        return ()
+    except OSError:
+        raise ErrorCommandMissing(cwd, command[0])
 
 def escape(s):
     """Escape the characters special to locate(1) globbing."""
@@ -185,7 +183,11 @@ def scan(repos, options):
             continue
 
         vcsname, get_status = SYSTEMS[dotdir]
-        lines, subrepos = get_status(directory, ignore_set, options)
+        try:
+            lines, subrepos = get_status(directory, ignore_set, options)
+        except ErrorCommandMissing as e:
+            output(b'{} - skipping: {!r} command not found\n'.format(*e.args))
+            continue
 
         # We want to tackle subrepos immediately after their repository,
         # so we put them at the front of the queue.
