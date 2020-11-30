@@ -186,7 +186,7 @@ def scan(repos, options):
         try:
             lines, subrepos = get_status(directory, ignore_set, options)
         except ErrorCommandMissing as e:
-            output(b'{} - skipping: {!r} command not found\n'.format(*e.args))
+            output(b'%s - skipping: %r command not found\n' % e.args)
             continue
 
         # We want to tackle subrepos immediately after their repository,

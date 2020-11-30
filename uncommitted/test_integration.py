@@ -531,3 +531,39 @@ def test_symlink_loop(checkouts):
         """, path=repo_with_symlink)
 
     assert actual_output == expected_output
+
+def test_missing_version_control_command(checkouts):
+    """What if a version control binary is missing?"""
+    real_run = uncommitted.command.run
+    def fake_run(command, *args, **kw):
+        command = list(command)
+        command[0] += '-asdf'  # mess up binary name so it won't be found
+        real_run(command, *args, **kw)
+    uncommitted.command.run = fake_run
+    try:
+        actual_output = run(checkouts)
+    finally:
+        uncommitted.command.run = real_run
+
+    expected_output = dedent("""\
+        {path}/git-clean - skipping: 'git-asdf' command not found
+
+        {path}/git-dirty - skipping: 'git-asdf' command not found
+
+        {path}/git-ignore - skipping: 'git-asdf' command not found
+
+        {path}/hg-clean - skipping: 'hg-asdf' command not found
+
+        {path}/hg-dirty - skipping: 'hg-asdf' command not found
+
+        {path}/hg-ignore - skipping: 'hg-asdf' command not found
+
+        {path}/svn-clean - skipping: 'svn-asdf' command not found
+
+        {path}/svn-dirty - skipping: 'svn-asdf' command not found
+
+        {path}/svn-ignore - skipping: 'svn-asdf' command not found
+
+        """, path=checkouts)
+
+    assert actual_output == expected_output
