@@ -68,6 +68,11 @@ contribute additional detection and scanning routines.
 Changelog
 ---------
 
+**2.4** (2020 January 10)
+
+- *Improvement:* show a more informative error message when a repository
+   is found whose version control command line tool is not installed.
+
 **2.3** (2020 May 14)
 
 - *Bugfix:* the regular expression that matches the name of a git
